@@ -69,7 +69,6 @@ O serviço principal é responsável por:
 
 Crie um arquivo `main.go`:
 ```go
-
 package main
 
 import (
@@ -141,7 +140,6 @@ Variáveis de ambiente (recomendado)
 
 Crie um arquivo .env:
 ```ini
-
 DB_HOST=localhost
 DB_USER=postgres
 DB_PASS=sua_senha
@@ -230,7 +228,6 @@ func main() {
 
 ## 📦 Estrutura do Token JWT
 ```json
-
 {
   "sub": "123",				// ID do usuário
   "iss": "Gorote",			// Nome App
@@ -264,8 +261,8 @@ curl http://localhost:3001/api/v1/ \
   Sempre habilite SSL/TLS para todas as comunicações
 
 - **Configure tempos de expiração adequados**  
-  - Access tokens: 5-15 minutos (ex: `5` in minute)
-  - Refresh tokens: 7-30 dias (ex: `168` in minute) 
+  - Access tokens: 5-15 minutos (ex: `5` em minutos)
+  - Refresh tokens: 7-30 dias (ex: `168` em minutos) 
 
 - **Revise permissões do banco de dados**  
   Aplique o princípio do menor privilégio para usuários do DB
