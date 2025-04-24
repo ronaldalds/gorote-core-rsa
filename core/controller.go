@@ -64,6 +64,45 @@ func (con *Controller) LoginHandler(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
+func (con *Controller) RefrashTokenHandler(ctx *fiber.Ctx) error {
+	req := ctx.Locals("validatedData").(*RefrashToken)
+
+	userID, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), &con.PrivateKey.PublicKey)
+	if err != nil {
+		return fiber.NewError(fiber.StatusUnauthorized, err.Error())
+	}
+
+	user, err := con.Service.GetUserByID(userID.Claims.Sub)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	if !user.Active {
+		return fiber.NewError(fiber.StatusUnauthorized, "failed to refrash token: user is inactive")
+	}
+
+	permissions := ExtractCodePermissionsByUser(user)
+
+	// generate accesstokens
+	accessToken, err := GenerateTokenRSA(&GenToken{
+		Id:          user.ID,
+		AppName:     con.AppName,
+		Permissions: permissions,
+		IsSuperUser: user.IsSuperUser,
+		TimeZone:    con.AppTimeZone,
+		PrivateKey:  con.PrivateKey,
+		Ttl:         con.Jwt.JwtExpireAccess,
+	})
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	res := &Token{
+		AccessToken:  accessToken,
+		RefreshToken: req.RefreshToken,
+	}
+	return ctx.Status(fiber.StatusOK).JSON(res)
+}
+
 func (con *Controller) ListPermissiontHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*Paginate)
 

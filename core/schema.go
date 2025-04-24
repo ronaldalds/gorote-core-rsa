@@ -14,6 +14,10 @@ type Login struct {
 	Password string `json:"password" validate:"required"`
 }
 
+type RefrashToken struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 type Token struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`

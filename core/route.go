@@ -5,6 +5,7 @@ import "github.com/gofiber/fiber/v2"
 func (r *Router) RegisterRouter(router fiber.Router) {
 	r.Health(router.Group("/health"))
 	r.Auth(router.Group("/auth", Limited(10)))
+	r.RefrashToken(router.Group("/refrash"))
 	r.User(router.Group("/users"))
 	r.Role(router.Group("/roles"))
 	r.Permission(router.Group("/permissions"))
@@ -22,6 +23,14 @@ func (r *Router) Auth(router fiber.Router) {
 		"/login",
 		ValidationMiddleware(&Login{}),
 		r.Controller.LoginHandler,
+	)
+}
+
+func (r *Router) RefrashToken(router fiber.Router) {
+	router.Post(
+		"/",
+		ValidationMiddleware(&RefrashToken{}),
+		r.Controller.RefrashTokenHandler,
 	)
 }
 
