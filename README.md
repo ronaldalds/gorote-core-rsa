@@ -9,7 +9,7 @@ Uma biblioteca completa para autenticação e autorização usando JWT com cript
 ## 📋 Pré-requisitos
 
 - Go 1.20 ou superior
-- PostgreSQL (ou outro banco de dados compatível com GORM)
+- PostgreSQL (13 ou superior)
 - OpenSSL (para geração de chaves)
 - Git
 
