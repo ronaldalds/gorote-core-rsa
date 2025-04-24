@@ -60,17 +60,14 @@ CREATE DATABASE service;
 
 O serviço principal é responsável por:
 
-    Gerenciar usuários
+  - Gerenciar usuários
+  - Gerar tokens JWT
+  - Validar credenciais
+  - Gerenciar tokens de refresh
 
-    Gerar tokens JWT
+### Configuração mínima
 
-    Validar credenciais
-
-    Gerenciar tokens de refresh
-
-Configuração mínima
-
-Crie um arquivo main.go:
+Crie um arquivo `main.go`:
 ```go
 
 package main
@@ -204,50 +201,43 @@ func main() {
 ```
 
 ## 🔍 Endpoints Disponíveis
-Autenticação
-Método	Endpoint	Descrição
-POST	/auth/login	Login de usuário
-POST	/auth/register	Registrar novo usuário
-POST	/auth/refresh	Atualizar token de acesso
-GET	/auth/me	Informações do usuário logado
-Microserviço
-Método	Endpoint	Descrição	Autenticação
-GET	/users	Listar usuários	Sim
-GET	/users/:id	Detalhes do usuário	Sim
+### Autenticação
+| Método | Endpoint             | Descrição                     | Body Request Example             |
+|--------|----------------------|-------------------------------|----------------------------------|
+| `POST` |`/api/v1/auth/login`  | Login de usuário |```{"username":"admin", "password":"senha123"}``` |
+| `POST` |`/api/v1/auth/refresh`| Renova o token de acesso      |```{"refresh_token": "token"}``` |
 
-##🛡️ Como a autenticação funciona
-    Login:
+### Microserviço
+| Método | Endpoint             | Descrição                     | Body Request Example             |
+|--------|----------------------|-------------------------------|----------------------------------|
+| `POST` |`/api/v1/example`     | Sua rota                      |```{"example":"example","example":"example"}``` |
 
-        Usuário envia credenciais para /auth/login
 
-        Serviço valida e retorna:
+## 🛡️ Como a autenticação funciona
+- **Login:**
+  - Usuário envia credenciais para `/auth/login`
+  - Serviço valida e retorna:
+    - `access_token` (validade curta)
+    - `refresh_token` (validade longa)
 
-            access_token (validade curta)
+- **Acesso a microserviços:**
+  - Incluir header: `Authorization: Bearer <access_token>`
+  - Microserviço valida assinatura com chave pública
 
-            refresh_token (validade longa)
-
-    Acesso a microserviços:
-
-        Incluir header: Authorization: Bearer <access_token>
-
-        Microserviço valida assinatura com chave pública
-
-    Token expirado:
-
-        Client usa /auth/refresh com refresh_token
-
-        Recebe novo access_token
+- **Token expirado:**
+  - Client usa `/auth/refresh` com `refresh_token`
+  - Recebe novo `access_token`
 
 ## 📦 Estrutura do Token JWT
 ```json
 
 {
-  "sub": "123",           // ID do usuário
-  "name": "João Silva",
-  "email": "joao@empresa.com",
-  "role": "admin",
-  "iat": 1516239022,      // Emitido em
-  "exp": 1516242622       // Expira em
+  "sub": "123",				// ID do usuário
+  "iss": "Gorote",			// Nome App
+  "permissions": ["view", "create"],	// Permissões do usuário
+  "isSuperUser": false,			// Se é super usuário
+  "iat": 1516239022,			// Emitido em
+  "exp": 1516242622			// Expira em
 }
 ```
 
@@ -267,25 +257,30 @@ curl http://localhost:3001/api/v1/ \
 
 ## 🚨 Segurança
 
-Nunca versionar private_key.pem
-Use HTTPS em produção
-Configure tempos de expiração adequados
-Revise permissões do banco de dados
-Monitore tentativas de login
+- **Nunca versionar `private_key.pem`**  
+  Mantenha este arquivo fora do controle de versão (adicione ao `.gitignore`)
 
-## 🤝 Contribuição
+- **Use HTTPS em produção**  
+  Sempre habilite SSL/TLS para todas as comunicações
 
-Faça fork do projeto
-Crie sua branch (git checkout -b feature/AmazingFeature)
-Commit suas mudanças (git commit -m 'Add some AmazingFeature')
-Push para a branch (git push origin feature/AmazingFeature)
-Abra um Pull Request
+- **Configure tempos de expiração adequados**  
+  - Access tokens: 5-15 minutos (ex: `5` in minute)
+  - Refresh tokens: 7-30 dias (ex: `168` in minute) 
 
-## 📄 Licença
+- **Revise permissões do banco de dados**  
+  Aplique o princípio do menor privilégio para usuários do DB
 
-Distribuído sob licença MIT. Veja LICENSE para mais informações.
+- **Monitore tentativas de login**  
+  Implemente logs e alertas para múltiplas falhas de autenticação
 
 ## ✉️ Contato
-Ronald Almeida - ronald.ralds@gmail.com
 
-Link do Projeto: https://github.com/ronaldalds/gorote-core-rsa
+**Ronald Almeida** - Desenvolvedor & Mantenedor  
+📧 [ronald.ralds@gmail.com](mailto:ronald.ralds@gmail.com)  
+💼 [LinkedIn: www.linkedin.com/in/ronald-ralds](https://www.linkedin.com/in/ronald-ralds)
+
+📦 **Repositório do Projeto**:  
+[github.com/ronaldalds/gorote-core-rsa](https://github.com/ronaldalds/gorote-core-rsa)  
+
+📬 **Relatar Issues**:  
+[Issues do Projeto](https://github.com/ronaldalds/gorote-core-rsa/issues)  
