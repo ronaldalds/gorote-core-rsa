@@ -277,7 +277,7 @@ curl http://localhost:3001/api/v1/ \
 
 **Ronald Almeida** - Desenvolvedor & Mantenedor  
 📧 [ronald.ralds@gmail.com](mailto:ronald.ralds@gmail.com)  
-💼 [LinkedIn: www.linkedin.com/in/ronald-ralds](https://www.linkedin.com/in/ronald-ralds)
+💼 LinkedIn: [Ronald Almeida](https://www.linkedin.com/in/ronald-ralds)
 
 📦 **Repositório do Projeto**:  
 [github.com/ronaldalds/gorote-core-rsa](https://github.com/ronaldalds/gorote-core-rsa)  
