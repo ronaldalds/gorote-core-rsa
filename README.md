@@ -47,13 +47,19 @@ CREATE DATABASE service;
 ```
 
 ## 🛠️ Configuração do Projeto
+
+Para uma melhor organização utilize o template [Projeto Gorote](https://github.com/ronaldalds/gorote):
 ```
 /gorote
-├── /api             # Arquivo base do projeto use o templete: (https://github.com/ronaldalds/gorote)
-├── /app             # Pasta onde fica as aplicações do projeto
-├── go.mod           # Dependências do Go
-├── private_key.pem  # Chave privada (não versionar!)
-└── public_key.pem   # Chave pública
+├── /api             	# Início do projeto instancia do fiber e configurações
+├── /app             	# Pasta onde fica as aplicações do projeto
+├── .env.example     	# Exemplo de .env
+├── .gitignore        	# Git ignore para go
+├── docker-compose.yaml	# docker compose com todos os serviços para subir aplicação em modo dev
+├── Dockerfile       	# Dockerfile para iniciar o container da API
+├── go.mod           	# Dependências do Go
+├── private_key.pem  	# Chave privada (não versionar!) ***Necessário criar***
+└── public_key.pem   	# Chave pública			 ***Necessário criar***
 ```
 
 ## 🔐 Serviço de Autenticação Principal
