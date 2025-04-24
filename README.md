@@ -97,8 +97,9 @@ func main() {
 	}
 
 	// 2. Configuração do banco de dados
+	// recomendado usar variáveis de ambiente para maior segurança
 	dbConfig := &core.InitGorm{
-		Host:     "localhost",
+		Host:     "localhost",			
 		User:     "seu_usuario",
 		Password: "sua_senha",
 		Database: "gorote",
@@ -135,24 +136,11 @@ func main() {
 
 	// 6. Inicializar rotas
 	router := core.New(appConfig)
-	router.RegisterRouter(app.Group("/api/v1/auth"))
+	router.RegisterRouter(app.Group("/api/v1"))
 
 	// 7. Iniciar servidor
 	log.Fatal(app.Listen(":3000"))
 }
-```
-
-Variáveis de ambiente (recomendado)
-
-Crie um arquivo .env:
-```ini
-DB_HOST=localhost
-DB_USER=postgres
-DB_PASS=sua_senha
-DB_NAME=gorote
-DB_PORT=5432
-JWT_ACCESS_EXPIRE=5
-JWT_REFRESH_EXPIRE=24
 ```
 
 ## 🌐 Microserviço Exemplo
@@ -208,8 +196,9 @@ func main() {
 ### Autenticação
 | Método | Endpoint             | Descrição                     | Body Request Example             |
 |--------|----------------------|-------------------------------|----------------------------------|
-| `POST` |`/api/v1/auth/login`  | Login de usuário |```{"username":"admin", "password":"senha123"}``` |
-| `POST` |`/api/v1/auth/refresh`| Renova o token de acesso      |```{"refresh_token": "token"}``` |
+| `GET`  |`/api/v1/health`      | Faz um health check           |                                  |
+| `POST` |`/api/v1/auth/login`  | Login de usuário              |```{"username":"admin", "password":"senha123"}``` |
+| `POST` |`/api/v1/refresh`     | Renova o token de acesso      |```{"refresh_token": "token"}``` |
 
 ### Microserviço
 | Método | Endpoint             | Descrição                     | Body Request Example             |
