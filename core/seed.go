@@ -6,35 +6,35 @@ import (
 	"gorm.io/gorm"
 )
 
-func (a *AppConfig) SaveUserAdmin() error {
-	hashPassword, err := HashPassword(a.Super.SuperPass)
+func (s *Service) saveUserAdmin() error {
+	hashPassword, err := HashPassword(s.Super.SuperPass)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %s", err.Error())
 	}
-	if err := a.CoreGorm.
+	if err := s.CoreGorm.
 		FirstOrCreate(&User{
-			FirstName:   a.Super.SuperName,
+			FirstName:   s.Super.SuperName,
 			LastName:    "Admin",
-			Username:    a.Super.SuperUser,
-			Email:       a.Super.SuperEmail,
+			Username:    s.Super.SuperUser,
+			Email:       s.Super.SuperEmail,
 			Password:    hashPassword,
 			Active:      true,
 			IsSuperUser: true,
-			Phone1:      a.Super.SuperPhone,
+			Phone1:      s.Super.SuperPhone,
 		}).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *AppConfig) SavePermissions(permissions ...PermissionCode) error {
+func (s *Service) savePermissions(permissions ...PermissionCode) error {
 	for _, permission := range permissions {
 		fmt.Println(permission)
 		var p Permission
-		if err := a.CoreGorm.Where("code = ?", string(permission)).First(&p).Error; err != nil {
+		if err := s.CoreGorm.Where("code = ?", string(permission)).First(&p).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				p = Permission{Code: string(permission), Name: string(permission)}
-				if err := a.CoreGorm.Create(&p).Error; err != nil {
+				if err := s.CoreGorm.Create(&p).Error; err != nil {
 					return err
 				}
 			} else {
