@@ -261,3 +261,27 @@ func (s *Service) ListUser() ([]User, error) {
 	}
 	return users, nil
 }
+
+func (s *Service) Seed(super *AppSuper) error {
+	if super != nil {
+		if err := s.saveUserAdmin(); err != nil {
+			return err
+		}
+	}
+
+	if err := s.savePermissions(
+		PermissionSuperUser,
+		PermissionCreateUser,
+		PermissionViewUser,
+		PermissionUpdateUser,
+		PermissionCreatePermission,
+		PermissionViewPermission,
+		PermissionUpdatePermission,
+		PermissionCreateRole,
+		PermissionViewRole,
+		PermissionUpdateRole,
+	); err != nil {
+		return err
+	}
+	return nil
+}
