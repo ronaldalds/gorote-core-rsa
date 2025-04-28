@@ -75,7 +75,7 @@ func (r *Router) Permission(router fiber.Router) {
 	router.Get(
 		"/",
 		ValidationMiddleware(&Paginate{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionEditePermissionsUser),
+		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionViewPermission),
 		r.Controller.ListPermissiontHandler,
 	)
 }
