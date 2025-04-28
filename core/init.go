@@ -49,7 +49,7 @@ type Service struct {
 
 func New(config *AppConfig) *Router {
 	if err := config.PreReady(); err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("err on pre ready: ", err.Error())
 	}
 	return &Router{
 		AppConfig:  config,
@@ -74,7 +74,7 @@ func NewService(config *AppConfig) *Service {
 		TimeUCT:   location,
 	}
 	if err := service.PosReady(); err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("err on pos ready: ", err.Error())
 	}
 	return service
 }
