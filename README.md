@@ -26,11 +26,13 @@ cd gorote-core-rsa
 
 Gerar chave RSA
 
+#### 2.1 Gerar chave privada (2048 bits)
 ```bash
-# Gerar chave privada (2048 bits)
 openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+```
 
-# Extrair chave pública
+#### 2.2 Extrair chave pública
+```bash
 openssl rsa -pubout -in private_key.pem -out public_key.pem
 ```
 
