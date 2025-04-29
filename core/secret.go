@@ -137,10 +137,10 @@ func ReadRSAPrivateKeyFromFile(filePath string) (*rsa.PrivateKey, error) {
 		return nil, errors.New("failed to decode PEM block")
 	}
 
-	// Tenta parsear como PKCS#8 (formato padrão do OpenSSL genpkey)
+	// Tenta parsear como PKCS#8
 	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		// Se falhar, tenta parsear como PKCS#1 (formato tradicional)
+		// Se falhar, tenta parsear como PKCS#1
 		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %v", err)
