@@ -3,6 +3,7 @@
 ![Go](https://img.shields.io/badge/Go-1.20+-00ADD8?logo=go)
 ![Fiber](https://img.shields.io/badge/Fiber-2.x-00ADD8)
 ![JWT](https://img.shields.io/badge/JWT-RSA-000000?logo=JSON%20web%20tokens)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ronaldalds/gorote-core-rsa)](https://goreportcard.com/report/github.com/ronaldalds/gorote-core-rsa)
 
 Uma biblioteca completa para autenticação e autorização usando JWT com criptografia RSA, desenvolvida em Go com Fiber.
 
