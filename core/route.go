@@ -3,6 +3,7 @@ package core
 import "github.com/gofiber/fiber/v2"
 
 func (r *Router) RegisterRouter(router fiber.Router) {
+	r.Check(router.Group("/check"))
 	r.Health(router.Group("/health"))
 	r.Auth(router.Group("/auth", Limited(10)))
 	r.RefrashToken(router.Group("/refrash"))
@@ -11,10 +12,17 @@ func (r *Router) RegisterRouter(router fiber.Router) {
 	r.Permission(router.Group("/permissions"))
 }
 
+func (r *Router) Check(router fiber.Router) {
+	router.Get(
+		"/",
+		Check(),
+	)
+}
+
 func (r *Router) Health(router fiber.Router) {
 	router.Get(
 		"/",
-		r.Controller.HealthHandler,
+		r.HealthGorm(),
 	)
 }
 

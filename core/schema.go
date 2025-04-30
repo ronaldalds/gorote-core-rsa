@@ -38,6 +38,7 @@ type CreateUser struct {
 type UserParam struct {
 	ID uint `param:"id"`
 }
+
 type UserSchema struct {
 	ID          uint   `json:"id"`
 	FirstName   string `json:"firstName" validate:"required,min=1,max=50"`

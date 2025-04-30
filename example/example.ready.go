@@ -2,7 +2,7 @@ package example
 
 func (config *AppConfig) PreReady() error {
 	// Executar as Migrations
-	if err := config.ExampleDB.AutoMigrate(); err != nil {
+	if err := config.DB.AutoMigrate(); err != nil {
 		return err
 	}
 	return nil

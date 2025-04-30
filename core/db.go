@@ -44,6 +44,14 @@ type MongoStore struct {
 	Database *mongo.Database
 }
 
+type RedisStore struct {
+	*redis.Client
+}
+
+type GormStore struct {
+	*gorm.DB
+}
+
 func NewMongoStore(m *InitMongo) *MongoStore {
 	// Cria um contexto com timeout para a conexão
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:%d/%s?authSource=admin&ssl=false",
@@ -73,7 +81,7 @@ func NewMongoStore(m *InitMongo) *MongoStore {
 	}
 }
 
-func NewRedisStore(r *InitRedis) *redis.Client {
+func NewRedisStore(r *InitRedis) *RedisStore {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -91,10 +99,10 @@ func NewRedisStore(r *InitRedis) *redis.Client {
 	}
 
 	fmt.Println("Connected to Redis")
-	return client
+	return &RedisStore{Client: client}
 }
 
-func NewGormStore(g *InitGorm) *gorm.DB {
+func NewGormStore(g *InitGorm) *GormStore {
 	// Cria um contexto com timeout de 10 segundos
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -147,6 +155,6 @@ func NewGormStore(g *InitGorm) *gorm.DB {
 	fmt.Println("Connected to Gorm and schema is set up.")
 
 	// Retorna o GormStore
-	return db
+	return &GormStore{DB: db}
 
 }

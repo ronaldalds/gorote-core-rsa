@@ -8,7 +8,7 @@ import (
 
 func (s *Service) Login(req *Login) (*User, error) {
 	var user User
-	result := s.CoreGorm.
+	result := s.DB.
 		Preload("Roles.Permissions").
 		Where("username = ? OR email = ?", req.Username, req.Username).
 		First(&user)
@@ -25,7 +25,7 @@ func (s *Service) Login(req *Login) (*User, error) {
 }
 
 func (s *Service) ListPermission(permissions *[]Permission) error {
-	result := s.CoreGorm.
+	result := s.DB.
 		Find(permissions)
 	if result.Error != nil {
 		return fmt.Errorf("failed to query database: %w", result.Error)
@@ -39,7 +39,7 @@ func (s *Service) GetPermissionByIds(permissions *[]Permission, ids []uint) erro
 	}
 
 	// Buscar as permissões pelos IDs fornecidos
-	if err := s.CoreGorm.Where("id IN ?", ids).Find(&permissions).Error; err != nil {
+	if err := s.DB.Where("id IN ?", ids).Find(&permissions).Error; err != nil {
 		return fmt.Errorf("failed to fetch permissions: %s", err.Error())
 	}
 
@@ -52,7 +52,7 @@ func (s *Service) GetPermissionByIds(permissions *[]Permission, ids []uint) erro
 }
 
 func (s *Service) ListRole(roles *[]Role) error {
-	result := s.CoreGorm.
+	result := s.DB.
 		Preload("Permissions").
 		Find(roles)
 	if result.Error != nil {
@@ -71,7 +71,7 @@ func (s *Service) CreateRole(role *Role, req *CreateRole) error {
 	role.Permissions = permissions // Associar permissões à role
 	role.Description = req.Description
 
-	if err := s.CoreGorm.Create(role).Error; err != nil {
+	if err := s.DB.Create(role).Error; err != nil {
 		return fmt.Errorf("failed to create role: %s", err.Error())
 	}
 	return nil
@@ -84,7 +84,7 @@ func (s *Service) GetRoleByIds(ids []uint) ([]Role, error) {
 	}
 
 	// Buscar as permissões pelos IDs fornecidos
-	if err := s.CoreGorm.Where("id IN ?", ids).Find(&roles).Error; err != nil {
+	if err := s.DB.Where("id IN ?", ids).Find(&roles).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch roles: %s", err.Error())
 	}
 
@@ -98,7 +98,7 @@ func (s *Service) GetRoleByIds(ids []uint) ([]Role, error) {
 
 func (s *Service) GetUserByID(id uint) (*User, error) {
 	var user User
-	result := s.CoreGorm.
+	result := s.DB.
 		Where("id = ?", id).
 		Preload("Roles.Permissions").
 		First(&user)
@@ -151,12 +151,12 @@ func (s *Service) CreateUser(creatorID uint, req *CreateUser) (*User, error) {
 	}
 
 	// Persistir o usuário no banco de dados
-	if err := s.CoreGorm.Create(&user).Error; err != nil {
+	if err := s.DB.Create(&user).Error; err != nil {
 		return nil, fmt.Errorf("failed to create user")
 	}
 
 	// Associar as roles ao usuário
-	if err := s.CoreGorm.Model(&user).Association("Roles").Replace(roles); err != nil {
+	if err := s.DB.Model(&user).Association("Roles").Replace(roles); err != nil {
 		return nil, fmt.Errorf("failed to set roles for user")
 	}
 
@@ -202,7 +202,7 @@ func (s *Service) UpdateSimpleUser(user *User, req *UserSchema) error {
 	user.Phone2 = req.Phone2
 
 	// Salvar as alterações
-	if err := s.CoreGorm.Model(user).Updates(user).Error; err != nil {
+	if err := s.DB.Model(user).Updates(user).Error; err != nil {
 		return fmt.Errorf("failed to update user: %s", err.Error())
 	}
 	return nil
@@ -224,7 +224,7 @@ func (s *Service) UpdateFullUser(editor *User, user *User, req *UserSchema) erro
 		}
 
 		// Atualizar as roles do usuário
-		if err := s.CoreGorm.Model(user).Association("Roles").Replace(roles); err != nil {
+		if err := s.DB.Model(user).Association("Roles").Replace(roles); err != nil {
 			return fmt.Errorf("failed to set roles for user: %v", err)
 		}
 	}
@@ -245,7 +245,7 @@ func (s *Service) UpdateFullUser(editor *User, user *User, req *UserSchema) erro
 	user.Phone2 = req.Phone2
 
 	// Salvar as alterações
-	if err := s.CoreGorm.Model(user).Updates(user).Error; err != nil {
+	if err := s.DB.Model(user).Updates(user).Error; err != nil {
 		return fmt.Errorf("failed to update user: %s", err.Error())
 	}
 	return nil
@@ -253,7 +253,7 @@ func (s *Service) UpdateFullUser(editor *User, user *User, req *UserSchema) erro
 
 func (s *Service) ListUser() ([]User, error) {
 	var users []User
-	result := s.CoreGorm.
+	result := s.DB.
 		Preload("Roles.Permissions").
 		Find(&users)
 	if result.Error != nil {

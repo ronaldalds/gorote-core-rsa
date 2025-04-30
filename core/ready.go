@@ -2,7 +2,7 @@ package core
 
 func (config *AppConfig) PreReady() error {
 	// Exe. Migrations
-	if err := config.CoreGorm.AutoMigrate(
+	if err := config.DB.AutoMigrate(
 		&User{},
 		&Role{},
 		&Permission{},

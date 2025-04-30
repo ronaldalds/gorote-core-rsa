@@ -2,22 +2,9 @@ package core
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-func (con *Controller) HealthHandler(ctx *fiber.Ctx) error {
-	sql, err := con.Service.HealthGorm()
-	if err != nil {
-		log.Println(err.Error())
-	}
-
-	health := &HealthHandler{
-		Sql: sql,
-	}
-	return ctx.Status(fiber.StatusOK).JSON(health)
-}
 
 func (con *Controller) LoginHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*Login)

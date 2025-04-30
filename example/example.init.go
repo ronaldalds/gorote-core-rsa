@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
+	"github.com/ronaldalds/gorote-core-rsa/core"
 )
 
 type AppConfig struct {
-	App         *fiber.App
+	*fiber.App
+	*core.GormStore
 	AppName     string
 	AppTimeZone string
 	PublicKey   *rsa.PublicKey
-	ExampleDB   *gorm.DB
 }
 
 type Router struct {

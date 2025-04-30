@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 )
 
 type AppJwt struct {
@@ -23,10 +22,10 @@ type AppSuper struct {
 }
 
 type AppConfig struct {
-	App         *fiber.App
+	*fiber.App
+	*GormStore
 	AppName     string
 	AppTimeZone string
-	CoreGorm    *gorm.DB
 	PrivateKey  *rsa.PrivateKey
 	Jwt         *AppJwt
 	Super       *AppSuper

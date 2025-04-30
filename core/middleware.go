@@ -13,6 +13,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
 
+func Check() fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		return ctx.Status(fiber.StatusOK).JSON(map[string]string{"status": "OK"})
+	}
+}
+
 func IsWsMiddleware() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		if !websocket.IsWebSocketUpgrade(ctx) {
@@ -78,7 +84,6 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 				if parseErr = ctx.QueryParser(requestStruct); parseErr != nil {
 					return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("invalid query parameters: %s", parseErr.Error()))
 				}
-				break
 			}
 
 			// Verifica tags de json
@@ -87,16 +92,14 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 				if parseErr = ctx.BodyParser(requestStruct); parseErr != nil {
 					return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("invalid body: %s", parseErr.Error()))
 				}
-				break
 			}
 
 			// Verifica tags de params (URL parameters)
-			if _, ok := field.Tag.Lookup("params"); ok {
+			if _, ok := field.Tag.Lookup("param"); ok {
 				foundTag = true
 				if parseErr = ctx.ParamsParser(requestStruct); parseErr != nil {
 					return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("invalid URL parameters: %s", parseErr.Error()))
 				}
-				break
 			}
 		}
 

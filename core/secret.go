@@ -20,7 +20,6 @@ type PayloadJwt struct {
 }
 type JwtClaims struct {
 	Sub         uint     `json:"sub"`
-	Exp         int      `json:"exp"`
 	Permissions []string `json:"permissions"`
 	IsSuperUser bool     `json:"isSuperUser"`
 	jwt.RegisteredClaims
@@ -42,29 +41,34 @@ func GenerateTokenRSA(gen *GenToken) (string, error) {
 		return "", fmt.Errorf("invalid timezone: %s", err.Error())
 	}
 	currentTime := time.Now().In(location)
+	expirationTime := currentTime.Add(gen.Ttl)
 
-	accessTokenExpirationTime := currentTime.Add(gen.Ttl)
-
-	accessClaims := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"sub":         gen.Id,
-		"iss":         gen.AppName,
-		"permissions": gen.Permissions,
-		"isSuperUser": gen.IsSuperUser,
-		"iat":         currentTime.Unix(),
-		"exp":         accessTokenExpirationTime.Unix(),
-	})
-
-	accessToken, err := accessClaims.SignedString(gen.PrivateKey)
-	if err != nil {
-		return "", fmt.Errorf("could not sign access token string %v", err.Error())
+	claims := JwtClaims{
+		Sub:         gen.Id,
+		Permissions: gen.Permissions,
+		IsSuperUser: gen.IsSuperUser,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    gen.AppName,
+			IssuedAt:  jwt.NewNumericDate(currentTime),
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
 	}
 
-	return accessToken, nil
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	signedToken, err := token.SignedString(gen.PrivateKey)
+	if err != nil {
+		return "", fmt.Errorf("could not sign access token: %v", err)
+	}
+
+	return signedToken, nil
 }
 
 func GetJwtHeaderPayloadRSA(authHeader string, publicKey *rsa.PublicKey) (*PayloadJwt, error) {
 	// Extrair o token da string de autorização
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == "" {
+		return nil, fmt.Errorf("authorization header is empty or malformed")
+	}
 
 	// Validar o token usando a chave pública
 	token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
@@ -137,10 +141,10 @@ func ReadRSAPrivateKeyFromFile(filePath string) (*rsa.PrivateKey, error) {
 		return nil, errors.New("failed to decode PEM block")
 	}
 
-	// Tenta parsear como PKCS#8
+	// Tenta parsear como PKCS#8 (formato padrão do OpenSSL genpkey)
 	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		// Se falhar, tenta parsear como PKCS#1
+		// Se falhar, tenta parsear como PKCS#1 (formato tradicional)
 		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %v", err)
