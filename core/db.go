@@ -13,49 +13,10 @@ import (
 	"gorm.io/gorm"
 )
 
-type InitRedis struct {
-	Host     string
-	Port     int
-	Password string
-	DB       int
-}
-
-type InitGorm struct {
-	Host     string
-	User     string
-	Password string
-	Database string
-	Port     int
-	TimeZone string
-	Schema   string
-	Models   []any
-}
-
-type InitMongo struct {
-	Username string
-	Password string
-	Host     string
-	Port     int
-	Database string
-}
-
-type MongoStore struct {
-	Client   *mongo.Client
-	Database *mongo.Database
-}
-
-type RedisStore struct {
-	*redis.Client
-}
-
-type GormStore struct {
-	*gorm.DB
-}
-
 func NewMongoStore(m *InitMongo) *MongoStore {
 	// Cria um contexto com timeout para a conexão
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:%d/%s?authSource=admin&ssl=false",
-		m.Username,
+		m.User,
 		m.Password,
 		m.Host,
 		m.Port,
@@ -89,7 +50,7 @@ func NewRedisStore(r *InitRedis) *RedisStore {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", r.Host, r.Port),
 		Password: r.Password, // "" para Redis sem autenticação
-		DB:       r.DB,       // Número do banco
+		DB:       r.Database, // Número do banco
 	})
 
 	// Verifica a conexão com o Redis

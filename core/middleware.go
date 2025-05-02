@@ -2,10 +2,12 @@ package core
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	"slices"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/contrib/websocket"
@@ -148,4 +150,46 @@ func Limited(max int) func(c *fiber.Ctx) error {
 		},
 	}
 	return limiter.New(config)
+}
+
+func Telemetry(funcSend func(LogTelemetry) error, Confidential bool) fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		start := time.Now()
+		var body map[string]any
+		var logData LogTelemetry
+		ctx.BodyParser(&body)
+
+		logData.Timestamp = time.Now().Format(time.RFC3339)
+		logData.Method = ctx.Method()
+		logData.Path = ctx.Path()
+		logData.Headers = ctx.GetReqHeaders()
+		logData.IP = ctx.IP()
+		logData.RequestBody = body
+
+		if Confidential {
+			logData.RequestBody = map[string]any{"confidential": "**********************"}
+		}
+
+		if err := ctx.Next(); err != nil {
+			var e *fiber.Error
+			if errors.As(err, &e) {
+				logData.Status = e.Code
+				logData.Latency = time.Since(start).Milliseconds()
+				logData.ResponseBody = e.Message
+
+				if err := funcSend(logData); err != nil {
+					return fmt.Errorf("error on send log: %v", err.Error())
+				}
+			}
+			return err
+		}
+		logData.Status = ctx.Response().StatusCode()
+		logData.Latency = time.Since(start).Milliseconds()
+		logData.ResponseBody = string(ctx.Response().Body())
+
+		if err := funcSend(logData); err != nil {
+			log.Println("error on send log:", err)
+		}
+		return nil
+	}
 }
