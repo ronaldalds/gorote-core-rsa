@@ -129,9 +129,9 @@ func main() {
 	// 5. Configuração completa do app
 	appConfig := &core.AppConfig{
 		App:         app,
+		GormStore:    core.NewGormStore(dbConfig),
 		AppName:     "Gorote Auth",
 		AppTimeZone: "America/Sao_Paulo",
-		CoreGorm:    core.NewGormStore(dbConfig),
 		PrivateKey:  privateKey,
 		Jwt:         jwtConfig,
 		Super:       superUser,
@@ -182,8 +182,8 @@ func main() {
 	// 3. Configuração do microserviço
 	serviceConfig := &example.AppConfig{
 		App:         app,
+		GormStore:   core.NewGormStore(serviceDB),
 		AppName:     "Meu Microserviço",
-		ExampleDB:   core.NewGormStore(serviceDB),
 		PublicKey:   publicKey,
 	}
 
