@@ -16,14 +16,7 @@ func (loki *LogLoki) SendLogToLoki(logData LogTelemetry) error {
 		return fmt.Errorf("erro ao converter log para JSON: %v", err.Error())
 	}
 	fmt.Println(string(jsonLog))
-
-	params := HttpRequestParams{
-		Method: POST,
-		URL:    lokiURL,
-		Headers: Headers{
-			ContentType: "application/json",
-		},
-		Body: map[string]any{
+	body := map[string]any{
 			"streams": []map[string]any{
 				{
 					"stream": map[string]any{
@@ -34,7 +27,18 @@ func (loki *LogLoki) SendLogToLoki(logData LogTelemetry) error {
 					},
 				},
 			},
+		}
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("erro json request")
+	}
+	params := HttpRequestParams{
+		Method: POST,
+		URL:    lokiURL,
+		Headers: Headers{
+			ContentType: "application/json",
 		},
+		Body: ,
 	}
 	res, err := SendHttpRequest(params)
 	if err != nil {
