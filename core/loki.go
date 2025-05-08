@@ -38,7 +38,7 @@ func (loki *LogLoki) SendLogToLoki(logData LogTelemetry) error {
 		Headers: Headers{
 			ContentType: "application/json",
 		},
-		Body: ,
+		Body: jsonBody,
 	}
 	res, err := SendHttpRequest(params)
 	if err != nil {
