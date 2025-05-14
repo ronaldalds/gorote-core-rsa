@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"reflect"
 	"log"
 	"reflect"
 	"slices"
@@ -122,23 +123,44 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 	}
 }
 
+func getJSONFieldName(s any, field string) string {
+	t := reflect.TypeOf(s)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	// Procura o field na struct
+	if f, ok := t.FieldByName(field); ok {
+		jsonTag := f.Tag.Get("json")
+		if jsonTag != "" && jsonTag != "-" {
+			// pega só o nome antes da vírgula (caso tenha omitempty, etc.)
+			return splitJSONTag(jsonTag)
+		}
+	}
+	return field // fallback pro nome real
+}
+
+func splitJSONTag(tag string) string {
+	for i, c := range tag {
+		if c == ',' {
+			return tag[:i]
+		}
+	}
+	return tag
+}
+
 func validateStruct(data any) error {
-	var validate = validator.New()
-	// Verifica se o objeto possui erros de validação
+	validate := validator.New()
 	err := validate.Struct(data)
 	if err != nil {
-		// Converte o erro para ValidationErrors, se aplicável
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			for _, err := range validationErrors {
-				fieldName := err.Field()
-				tag := err.Tag()
-				return fmt.Errorf(fieldName, " - invalid field: ", tag)
+				jsonField := getJSONFieldName(data, err.StructField())
+				return fmt.Errorf("invalid validation: (field: '%s' is %s type: %s)", jsonField, err.ActualTag(), err.Type())
 			}
 		}
-		// Retorna erro genérico se não for ValidationErrors
 		return fmt.Errorf("invalid data: %s", err.Error())
 	}
-	// Nenhum erro encontrado
 	return nil
 }
 
