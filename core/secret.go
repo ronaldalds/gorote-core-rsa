@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -186,4 +187,51 @@ func ReadRSAPublicKeyFromFile(filePath string) (*rsa.PublicKey, error) {
 	}
 
 	return rsaPub, nil
+}
+
+func ReadRSAPublicKeyFromString(key string) (*rsa.PublicKey, error) {
+	derBytes, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return nil, err
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(derBytes)
+	if err != nil {
+		// Se falhar, tenta parsear como PKCS#1 (algumas chaves públicas podem estar nesse formato)
+		rsaPub, err := x509.ParsePKCS1PublicKey(derBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse public key: %v", err)
+		}
+		return rsaPub, nil
+	}
+
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
+	}
+
+	return rsaPub, nil
+}
+
+func ReadRSAPrivateKeyFromString(key string) (*rsa.PrivateKey, error) {
+	derBytes, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKey, err := x509.ParsePKCS8PrivateKey(derBytes)
+	if err != nil {
+		// Se falhar, tenta parsear como PKCS#1 (formato tradicional)
+		privateKey, err = x509.ParsePKCS1PrivateKey(derBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private key: %v", err)
+		}
+	}
+
+	rsaPriv, ok := privateKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("not an RSA private key")
+	}
+
+	return rsaPriv, nil
 }
