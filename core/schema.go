@@ -34,7 +34,6 @@ type CreateUser struct {
 	Password string `json:"password" validate:"required,min=6"`
 }
 
-// DTO model
 type UserParam struct {
 	ID uint `param:"id"`
 }
@@ -65,8 +64,6 @@ type PermissionSchema struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
-
-// DTO list
 
 type ListUser struct {
 	Page  uint         `json:"page" validate:"required,min=1"`

@@ -27,7 +27,6 @@ type InitGorm struct {
 	Port     int
 	TimeZone string
 	Schema   string
-	Models   []any
 }
 
 type InitMongo struct {

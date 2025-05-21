@@ -1,11 +1,11 @@
 package core
 
 func (config *AppConfig) PreReady() error {
-	// Exe. Migrations
 	if err := config.DB.AutoMigrate(
 		&User{},
 		&Role{},
 		&Permission{},
+		&Tenant{},
 	); err != nil {
 		return err
 	}
@@ -13,7 +13,24 @@ func (config *AppConfig) PreReady() error {
 }
 
 func (s *Service) PosReady() error {
-	if err := s.Seed(s.Super); err != nil {
+	if s.Super != nil {
+		if err := s.saveUserAdmin(); err != nil {
+			return err
+		}
+	}
+
+	if err := s.savePermissions(
+		PermissionSuperUser,
+		PermissionCreateUser,
+		PermissionViewUser,
+		PermissionUpdateUser,
+		PermissionCreatePermission,
+		PermissionViewPermission,
+		PermissionUpdatePermission,
+		PermissionCreateRole,
+		PermissionViewRole,
+		PermissionUpdateRole,
+	); err != nil {
 		return err
 	}
 	return nil

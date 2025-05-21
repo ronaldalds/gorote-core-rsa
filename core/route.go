@@ -46,8 +46,8 @@ func (r *Router) User(router fiber.Router) {
 	router.Get(
 		"/",
 		ValidationMiddleware(&Paginate{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey),
-		r.Controller.ListUserHandler,
+		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionViewUser),
+		r.Controller.ListUsersHandler,
 	)
 	router.Post(
 		"/",
@@ -59,7 +59,7 @@ func (r *Router) User(router fiber.Router) {
 		"/:id",
 		ValidationMiddleware(&UserParam{}),
 		ValidationMiddleware(&UserSchema{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionUpdateUser),
+		JWTProtectedRSA(&r.PrivateKey.PublicKey),
 		r.Controller.UpdateUserHandler,
 	)
 }
@@ -69,7 +69,7 @@ func (r *Router) Role(router fiber.Router) {
 		"/",
 		ValidationMiddleware(&Paginate{}),
 		JWTProtectedRSA(&r.PrivateKey.PublicKey),
-		r.Controller.ListRoleHandler,
+		r.Controller.ListRolesHandler,
 	)
 	router.Post(
 		"/",

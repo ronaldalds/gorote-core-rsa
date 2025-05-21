@@ -15,14 +15,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type PayloadJwt struct {
-	Token  string
-	Claims JwtClaims
-}
 type JwtClaims struct {
 	Sub         uint     `json:"sub"`
-	Permissions []string `json:"permissions"`
 	IsSuperUser bool     `json:"isSuperUser"`
+	Permissions []string `json:"permissions"`
+	Tenants     []uint   `json:"tenants"`
+	Type        string   `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -30,8 +28,10 @@ type GenToken struct {
 	Id          uint
 	AppName     string
 	Permissions []string
+	Tenants     []uint
 	IsSuperUser bool
 	TimeZone    string
+	Type        string
 	PrivateKey  *rsa.PrivateKey
 	Ttl         time.Duration
 }
@@ -48,6 +48,8 @@ func GenerateTokenRSA(gen *GenToken) (string, error) {
 		Sub:         gen.Id,
 		Permissions: gen.Permissions,
 		IsSuperUser: gen.IsSuperUser,
+		Tenants:     gen.Tenants,
+		Type:        gen.Type,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    gen.AppName,
 			IssuedAt:  jwt.NewNumericDate(currentTime),
@@ -64,16 +66,13 @@ func GenerateTokenRSA(gen *GenToken) (string, error) {
 	return signedToken, nil
 }
 
-func GetJwtHeaderPayloadRSA(authHeader string, publicKey *rsa.PublicKey) (*PayloadJwt, error) {
-	// Extrair o token da string de autorização
+func GetJwtHeaderPayloadRSA(authHeader string, publicKey *rsa.PublicKey) (*JwtClaims, error) {
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 	if tokenString == "" {
 		return nil, fmt.Errorf("authorization header is empty or malformed")
 	}
 
-	// Validar o token usando a chave pública
 	token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (any, error) {
-		// Verificar o método de assinatura
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -84,23 +83,16 @@ func GetJwtHeaderPayloadRSA(authHeader string, publicKey *rsa.PublicKey) (*Paylo
 		return nil, err
 	}
 
-	// Verificar se o token é válido
 	if !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
 
-	// Obter as reivindicações do token
 	claims, ok := token.Claims.(*JwtClaims)
 	if !ok {
 		return nil, fmt.Errorf("invalid claims type")
 	}
 
-	jwt := &PayloadJwt{
-		Token:  tokenString,
-		Claims: *claims,
-	}
-
-	return jwt, nil
+	return claims, nil
 }
 
 func GeneratePemRSA() error {
@@ -142,10 +134,8 @@ func ReadRSAPrivateKeyFromFile(filePath string) (*rsa.PrivateKey, error) {
 		return nil, errors.New("failed to decode PEM block")
 	}
 
-	// Tenta parsear como PKCS#8 (formato padrão do OpenSSL genpkey)
 	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		// Se falhar, tenta parsear como PKCS#1 (formato tradicional)
 		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %v", err)
@@ -173,7 +163,6 @@ func ReadRSAPublicKeyFromFile(filePath string) (*rsa.PublicKey, error) {
 
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		// Se falhar, tenta parsear como PKCS#1 (algumas chaves públicas podem estar nesse formato)
 		rsaPub, err := x509.ParsePKCS1PublicKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse public key: %v", err)
@@ -197,7 +186,6 @@ func ReadRSAPublicKeyFromString(key string) (*rsa.PublicKey, error) {
 
 	pub, err := x509.ParsePKIXPublicKey(derBytes)
 	if err != nil {
-		// Se falhar, tenta parsear como PKCS#1 (algumas chaves públicas podem estar nesse formato)
 		rsaPub, err := x509.ParsePKCS1PublicKey(derBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse public key: %v", err)
@@ -221,7 +209,6 @@ func ReadRSAPrivateKeyFromString(key string) (*rsa.PrivateKey, error) {
 
 	privateKey, err := x509.ParsePKCS8PrivateKey(derBytes)
 	if err != nil {
-		// Se falhar, tenta parsear como PKCS#1 (formato tradicional)
 		privateKey, err = x509.ParsePKCS1PrivateKey(derBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %v", err)

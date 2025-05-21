@@ -29,7 +29,6 @@ func (s *Service) saveUserAdmin() error {
 
 func (s *Service) savePermissions(permissions ...PermissionCode) error {
 	for _, permission := range permissions {
-		fmt.Println(permission)
 		var p Permission
 		if err := s.DB.Where("code = ?", string(permission)).First(&p).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -41,7 +40,6 @@ func (s *Service) savePermissions(permissions ...PermissionCode) error {
 				return err
 			}
 		} else {
-			// Permission already exists, skip to the next one
 			continue
 		}
 	}

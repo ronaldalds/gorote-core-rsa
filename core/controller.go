@@ -2,48 +2,55 @@ package core
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func (con *Controller) LoginHandler(ctx *fiber.Ctx) error {
+func (c *Controller) LoginHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*Login)
 
-	// find username or email in database
-	user, err := con.Service.Login(req)
+	user, err := c.Service.Login(req)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
 	permissions := ExtractCodePermissionsByUser(user)
 
-	// generate tokens
+	var tenants []uint
+	for _, tenant := range user.Tenants {
+		tenants = append(tenants, tenant.ID)
+	}
+
 	accessToken, err := GenerateTokenRSA(&GenToken{
 		Id:          user.ID,
-		AppName:     con.AppName,
+		AppName:     c.AppName,
 		Permissions: permissions,
 		IsSuperUser: user.IsSuperUser,
-		TimeZone:    con.AppTimeZone,
-		PrivateKey:  con.PrivateKey,
-		Ttl:         con.Jwt.JwtExpireAccess,
+		Tenants:     tenants,
+		TimeZone:    c.AppTimeZone,
+		PrivateKey:  c.PrivateKey,
+		Ttl:         c.Jwt.JwtExpireAccess,
+		Type:        "access",
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	refreshToken, err := GenerateTokenRSA(&GenToken{
 		Id:          user.ID,
-		AppName:     con.AppName,
+		AppName:     c.AppName,
 		Permissions: permissions,
 		IsSuperUser: user.IsSuperUser,
-		TimeZone:    con.AppTimeZone,
-		PrivateKey:  con.PrivateKey,
-		Ttl:         con.Jwt.JwtExpireRefresh,
+		Tenants:     tenants,
+		TimeZone:    c.AppTimeZone,
+		PrivateKey:  c.PrivateKey,
+		Ttl:         c.Jwt.JwtExpireRefresh,
+		Type:        "refresh",
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	// send response
 	res := &Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -51,33 +58,39 @@ func (con *Controller) LoginHandler(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (con *Controller) RefrashTokenHandler(ctx *fiber.Ctx) error {
+func (c *Controller) RefrashTokenHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*RefrashToken)
 
-	userID, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), &con.PrivateKey.PublicKey)
+	claims, err := GetJwtHeaderPayloadRSA(req.RefreshToken, &c.PrivateKey.PublicKey)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 	}
 
-	user, err := con.Service.GetUserByID(userID.Claims.Sub)
+	user, err := c.Service.GetUserByID(claims.Sub)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	if !user.Active {
-		return fiber.NewError(fiber.StatusUnauthorized, "failed to refrash token: user is inactive")
+		return fiber.NewError(fiber.StatusBadRequest, "failed to refrash token: user is inactive")
 	}
 
 	permissions := ExtractCodePermissionsByUser(user)
 
-	// generate accesstokens
+	var tenants []uint
+	for _, tenant := range user.Tenants {
+		tenants = append(tenants, tenant.ID)
+	}
+
 	accessToken, err := GenerateTokenRSA(&GenToken{
 		Id:          user.ID,
-		AppName:     con.AppName,
+		AppName:     c.AppName,
 		Permissions: permissions,
 		IsSuperUser: user.IsSuperUser,
-		TimeZone:    con.AppTimeZone,
-		PrivateKey:  con.PrivateKey,
-		Ttl:         con.Jwt.JwtExpireAccess,
+		Tenants:     tenants,
+		TimeZone:    c.AppTimeZone,
+		PrivateKey:  c.PrivateKey,
+		Ttl:         c.Jwt.JwtExpireAccess,
+		Type:        "access",
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
@@ -90,11 +103,11 @@ func (con *Controller) RefrashTokenHandler(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (con *Controller) ListPermissiontHandler(ctx *fiber.Ctx) error {
+func (c *Controller) ListPermissiontHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*Paginate)
 
-	var permissions []Permission
-	if err := con.Service.ListPermission(&permissions); err != nil {
+	permissions, err := c.Service.ListPermissions()
+	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
@@ -124,11 +137,11 @@ func (con *Controller) ListPermissiontHandler(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (con *Controller) ListRoleHandler(ctx *fiber.Ctx) error {
+func (c *Controller) ListRolesHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*Paginate)
 
-	var roles []Role
-	if err := con.Service.ListRole(&roles); err != nil {
+	roles, err := c.Service.ListRoles()
+	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
@@ -165,15 +178,14 @@ func (con *Controller) ListRoleHandler(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (con *Controller) CreateRoleHandler(ctx *fiber.Ctx) error {
+func (c *Controller) CreateRoleHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*CreateRole)
 
-	var role Role
-	if err := con.Service.CreateRole(&role, req); err != nil {
+	role, err := c.Service.CreateRole(req)
+	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	// Extrair os codes das permissões
 	var permissionCodes []PermissionSchema
 	for _, permission := range role.Permissions {
 		schema := &PermissionSchema{
@@ -185,19 +197,19 @@ func (con *Controller) CreateRoleHandler(ctx *fiber.Ctx) error {
 		permissionCodes = append(permissionCodes, *schema)
 	}
 
-	// Preparar a resposta
 	res := &RoleSchema{
 		ID:          role.ID,
 		Name:        role.Name,
-		Permissions: permissionCodes, // Adicionar apenas os codes
+		Description: role.Description,
+		Permissions: permissionCodes,
 	}
 	return ctx.Status(fiber.StatusCreated).JSON(res)
 }
 
-func (con *Controller) ListUserHandler(ctx *fiber.Ctx) error {
+func (c *Controller) ListUsersHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*Paginate)
 
-	users, err := con.Service.ListUser()
+	users, err := c.Service.ListUsers()
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -219,7 +231,7 @@ func (con *Controller) ListUserHandler(ctx *fiber.Ctx) error {
 			Active:      user.Active,
 			IsSuperUser: user.IsSuperUser,
 			Phone1:      user.Phone1,
-			Phone2:      user.Phone2,
+			Phone2:      *user.Phone2,
 			Roles:       ExtractNameRolesByUser(user),
 		}
 		data = append(data, schema)
@@ -234,11 +246,11 @@ func (con *Controller) ListUserHandler(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (con *Controller) CreateUserHandler(ctx *fiber.Ctx) error {
+func (c *Controller) CreateUserHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*CreateUser)
 
 	if err := ValidatePassword(req.Password); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(err)
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 	hashedPassword, err := HashPassword(req.Password)
 	if err != nil {
@@ -246,12 +258,7 @@ func (con *Controller) CreateUserHandler(ctx *fiber.Ctx) error {
 	}
 	req.Password = hashedPassword
 
-	creator, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), &con.PrivateKey.PublicKey)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	user, err := con.Service.CreateUser(creator.Claims.Sub, req)
+	user, err := c.Service.CreateUser(req)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -264,25 +271,35 @@ func (con *Controller) CreateUserHandler(ctx *fiber.Ctx) error {
 		Active:      user.Active,
 		IsSuperUser: user.IsSuperUser,
 		Phone1:      user.Phone1,
-		Phone2:      user.Phone2,
+		Phone2:      *user.Phone2,
 		Roles:       ExtractNameRolesByUser(*user),
 	}
 	return ctx.Status(fiber.StatusCreated).JSON(res)
 }
 
-func (con *Controller) UpdateUserHandler(ctx *fiber.Ctx) error {
+func (c *Controller) UpdateUserHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*UserSchema)
 
-	fmt.Println(req.ID)
-
-	editor, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), &con.PrivateKey.PublicKey)
+	claims, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), &c.PrivateKey.PublicKey)
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 	}
 
-	user, err := con.Service.UpdateUser(editor.Claims.Sub, uint(req.ID), req)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	userAdmin := slices.Contains(claims.Permissions, string(PermissionSuperUser)) || slices.Contains(claims.Permissions, string(PermissionUpdateUser))
+
+	var user *User
+	if claims.IsSuperUser || userAdmin {
+		user, err = c.Service.AdminUpdateUser(req)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+	} else if claims.Sub == req.ID {
+		user, err = c.Service.UpdateUserPartial(req)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		}
+	} else {
+		return fiber.NewError(fiber.StatusBadRequest, "you are not authorized to update this user")
 	}
 
 	res := &UserSchema{
@@ -294,7 +311,7 @@ func (con *Controller) UpdateUserHandler(ctx *fiber.Ctx) error {
 		Active:      user.Active,
 		IsSuperUser: user.IsSuperUser,
 		Phone1:      user.Phone1,
-		Phone2:      user.Phone2,
+		Phone2:      *user.Phone2,
 		Roles:       ExtractNameRolesByUser(*user),
 	}
 	return ctx.Status(fiber.StatusOK).JSON(res)

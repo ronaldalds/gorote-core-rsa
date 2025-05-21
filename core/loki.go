@@ -17,17 +17,17 @@ func (loki *LogLoki) SendLogToLoki(logData LogTelemetry) error {
 	}
 	fmt.Println(string(jsonLog))
 	body := map[string]any{
-			"streams": []map[string]any{
-				{
-					"stream": map[string]any{
-						"app": loki.AppName,
-					},
-					"values": [][]string{
-						{timestamp, string(jsonLog)},
-					},
+		"streams": []map[string]any{
+			{
+				"stream": map[string]any{
+					"app": loki.AppName,
+				},
+				"values": [][]string{
+					{timestamp, string(jsonLog)},
 				},
 			},
-		}
+		},
+	}
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("erro json request")

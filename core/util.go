@@ -29,24 +29,21 @@ func ExtractCodePermissionsByUser(user *User) []string {
 }
 
 func ContainsAll(listX, listY []Role) bool {
-	// Criar um mapa para os itens de X
 	itemMap := make(map[uint]bool)
 	for _, item := range listX {
 		itemMap[item.ID] = true
 	}
 
-	// Verificar se todos os itens de Y estão no mapa de X
 	for _, item := range listY {
 		if !itemMap[item.ID] {
-			return false // Item de Y não está em X
+			return false
 		}
 	}
 
-	return true // Todos os itens de Y estão em X
+	return true
 }
 
 func HashPassword(password string) (string, error) {
-	// Exemplo usando bcrypt
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password")
@@ -60,7 +57,6 @@ func CheckPasswordHash(password, hashedPassword string) bool {
 }
 
 func ValidatePassword(password string) error {
-	// Verificar se contém uma letra maiúscula
 	hasUpper := false
 	hasSymbol := false
 
@@ -68,7 +64,7 @@ func ValidatePassword(password string) error {
 		if unicode.IsUpper(r) {
 			hasUpper = true
 		}
-		if unicode.IsSymbol(r) || unicode.IsPunct(r) { // Símbolos e pontuações
+		if unicode.IsSymbol(r) || unicode.IsPunct(r) {
 			hasSymbol = true
 		}
 	}

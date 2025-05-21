@@ -4,8 +4,8 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
-	"reflect"
 	"log"
+	"reflect"
 	"slices"
 	"time"
 
@@ -33,29 +33,28 @@ func IsWsMiddleware() fiber.Handler {
 
 func JWTProtectedRSA(publicKey *rsa.PublicKey, permissions ...PermissionCode) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		token, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), publicKey)
+		claims, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), publicKey)
 		if err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 		}
 
-		// Check permissions
-		if token.Claims.IsSuperUser {
+		if claims.Type == "refresh" {
+			return fiber.NewError(fiber.StatusUnauthorized, "token is refresh token")
+		}
+
+		if claims.IsSuperUser {
 			return ctx.Next()
 		}
 		if len(permissions) == 0 {
 			return ctx.Next()
 		}
 
-		// Check if any required permission exists in user's permissions
 		for _, requiredPermission := range permissions {
-			if slices.Contains(token.Claims.Permissions, string(requiredPermission)) {
-				log.Println("Permission validated, proceeding to next handler")
+			if slices.Contains(claims.Permissions, string(requiredPermission)) {
 				return ctx.Next()
 			}
 		}
 
-		// If no errors, log success and continue to the next handler
-		log.Println("JWT validated and session matched, proceeding to next handler")
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	}
 }
@@ -64,10 +63,9 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		v := reflect.ValueOf(requestStruct)
 		if v.Kind() == reflect.Ptr {
-			v = v.Elem() // Dereferencia o ponteiro para obter o valor subjacente
+			v = v.Elem()
 		}
 
-		// Verifica se o valor subjacente é uma struct
 		if v.Kind() != reflect.Struct {
 			return fiber.NewError(fiber.StatusInternalServerError, "validation target must be a struct")
 		}
@@ -76,11 +74,9 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 		var foundTag bool
 		var parseErr error
 
-		// Verifica todas as tags para determinar o tipo de input
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
 
-			// Verifica tags de query
 			if _, ok := field.Tag.Lookup("query"); ok {
 				foundTag = true
 				if parseErr = ctx.QueryParser(requestStruct); parseErr != nil {
@@ -88,7 +84,6 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 				}
 			}
 
-			// Verifica tags de json
 			if _, ok := field.Tag.Lookup("json"); ok {
 				foundTag = true
 				if parseErr = ctx.BodyParser(requestStruct); parseErr != nil {
@@ -96,7 +91,6 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 				}
 			}
 
-			// Verifica tags de params (URL parameters)
 			if _, ok := field.Tag.Lookup("param"); ok {
 				foundTag = true
 				if parseErr = ctx.ParamsParser(requestStruct); parseErr != nil {
@@ -109,15 +103,12 @@ func ValidationMiddleware(requestStruct any) fiber.Handler {
 			return fiber.NewError(fiber.StatusBadRequest, "no valid tags found in struct (query, json or params)")
 		}
 
-		// Valide os dados usando o validator
 		if err := validateStruct(requestStruct); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, err.Error())
 		}
 
-		// Armazene os dados validados no contexto
 		ctx.Locals("validatedData", requestStruct)
 
-		// Prossiga para o próximo middleware ou handler
 		return ctx.Next()
 	}
 }
@@ -128,15 +119,13 @@ func getJSONFieldName(s any, field string) string {
 		t = t.Elem()
 	}
 
-	// Procura o field na struct
 	if f, ok := t.FieldByName(field); ok {
 		jsonTag := f.Tag.Get("json")
 		if jsonTag != "" && jsonTag != "-" {
-			// pega só o nome antes da vírgula (caso tenha omitempty, etc.)
 			return splitJSONTag(jsonTag)
 		}
 	}
-	return field // fallback pro nome real
+	return field
 }
 
 func splitJSONTag(tag string) string {

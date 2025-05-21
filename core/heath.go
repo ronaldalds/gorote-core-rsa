@@ -13,7 +13,6 @@ import (
 func (s *GormStore) HealthGorm() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		stats := make(map[string]string)
-		// Cria um contexto com timeout para o health check
 		contx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
@@ -21,28 +20,25 @@ func (s *GormStore) HealthGorm() fiber.Handler {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to connect to Redis")
 		}
 
-		// Access the underlying *sql.DB from GORM and ping it
-		sqlDB, err := s.DB.DB() // Obtém o *sql.DB subjacente do GORM
+		sqlDB, err := s.DB.DB()
 		if err != nil {
 			stats["status"] = "down"
 			stats["error"] = fmt.Sprintf("db connection error: %v", err)
-			log.Fatalf("db connection error: %v", err) // Log the error and terminate the program
+			log.Fatalf("db connection error: %v", err)
 			return ctx.Status(fiber.StatusInternalServerError).JSON(stats)
 		}
 
-		err = sqlDB.PingContext(contx) // Realiza o ping no banco de dados
+		err = sqlDB.PingContext(contx)
 		if err != nil {
 			stats["status"] = "down"
 			stats["error"] = fmt.Sprintf("db ping failed: %v", err)
-			log.Fatalf("db ping failed: %v", err) // Log the error and terminate the program
+			log.Fatalf("db ping failed: %v", err)
 			return ctx.Status(fiber.StatusInternalServerError).JSON(stats)
 		}
 
-		// Database is up, add more statistics
 		stats["status"] = "up"
 		stats["message"] = "It's healthy"
 
-		// Query for connection pool stats (PostgreSQL example)
 		var dbStats struct {
 			OpenConnections   int
 			InUse             int
@@ -52,7 +48,6 @@ func (s *GormStore) HealthGorm() fiber.Handler {
 			MaxIdleClosed     int64
 			MaxLifetimeClosed int64
 		}
-		// You can write your own SQL query to fetch database stats
 		sqlStats := `
 		SELECT 
     		(SELECT count(*) FROM pg_stat_activity WHERE state = 'active') as open_connections,
@@ -65,15 +60,14 @@ func (s *GormStore) HealthGorm() fiber.Handler {
 		}
 
 		stats["open_connections"] = strconv.Itoa(dbStats.OpenConnections)
-		stats["in_use"] = strconv.Itoa(dbStats.InUse) // You can calculate in_use based on your needs
+		stats["in_use"] = strconv.Itoa(dbStats.InUse)
 		stats["idle"] = strconv.Itoa(dbStats.Idle)
 		stats["wait_count"] = strconv.FormatInt(dbStats.WaitCount, 10)
-		stats["wait_duration"] = dbStats.WaitDuration.String() // You can get a duration in some databases
+		stats["wait_duration"] = dbStats.WaitDuration.String()
 		stats["max_idle_closed"] = strconv.FormatInt(dbStats.MaxIdleClosed, 10)
 		stats["max_lifetime_closed"] = strconv.FormatInt(dbStats.MaxLifetimeClosed, 10)
 
-		// Evaluate stats to provide a health message
-		if dbStats.OpenConnections > 40 { // Assuming 50 is the max for this example
+		if dbStats.OpenConnections > 40 {
 			stats["message"] = "The database is experiencing heavy load."
 		}
 
