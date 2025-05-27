@@ -10,7 +10,8 @@ func (s *Service) Login(req *Login) (*User, error) {
 	var user User
 	result := s.DB.
 		Preload("Roles.Permissions").
-		Where("username = ? OR email = ?", req.Username, req.Username).
+		Preload("Tenants").
+		Where("email = ?", req.Username).
 		First(&user)
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to login: username or password is incorrect")
@@ -121,7 +122,6 @@ func (s *Service) CreateUser(req *CreateUser) (*User, error) {
 	user := User{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
-		Username:  req.Username,
 		Email:     req.Email,
 		Password:  req.Password,
 		Active:    req.Active,
@@ -175,7 +175,6 @@ func (s *Service) AdminUpdateUser(req *UserSchema) (*User, error) {
 
 	user.FirstName = req.FirstName
 	user.LastName = req.LastName
-	user.Username = req.Username
 	user.Email = req.Email
 	user.Active = req.Active
 	user.Phone1 = req.Phone1

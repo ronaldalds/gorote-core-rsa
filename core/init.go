@@ -29,6 +29,7 @@ type AppConfig struct {
 	PrivateKey  *rsa.PrivateKey
 	Jwt         *AppJwt
 	Super       *AppSuper
+	Domain      string
 }
 
 type Router struct {

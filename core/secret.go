@@ -12,11 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type JwtClaims struct {
 	Sub         uint     `json:"sub"`
+	Email       string   `json:"email"`
 	IsSuperUser bool     `json:"isSuperUser"`
 	Permissions []string `json:"permissions"`
 	Tenants     []uint   `json:"tenants"`
@@ -26,6 +28,7 @@ type JwtClaims struct {
 
 type GenToken struct {
 	Id          uint
+	Email       string
 	AppName     string
 	Permissions []string
 	Tenants     []uint
@@ -34,6 +37,60 @@ type GenToken struct {
 	Type        string
 	PrivateKey  *rsa.PrivateKey
 	Ttl         time.Duration
+}
+
+type ConfigToken struct {
+	TokenType   string
+	AppName     string
+	AppTimeZone string
+	Domain      string
+	PrivateKey  *rsa.PrivateKey
+	Ttl         time.Duration
+}
+
+func SetToken(ctx *fiber.Ctx, user *User, config *ConfigToken) (string, error) {
+	permissions := ExtractCodePermissionsByUser(user)
+
+	var tenants []uint
+	for _, tenant := range user.Tenants {
+		tenants = append(tenants, tenant.ID)
+	}
+	accessToken, err := GenerateTokenRSA(&GenToken{
+		Id:          user.ID,
+		Email:       user.Email,
+		AppName:     config.AppName,
+		Permissions: permissions,
+		IsSuperUser: user.IsSuperUser,
+		Tenants:     tenants,
+		TimeZone:    config.AppTimeZone,
+		PrivateKey:  config.PrivateKey,
+		Ttl:         config.Ttl,
+		Type:        config.TokenType,
+	})
+	if err != nil {
+		return "", err
+	}
+	if config.Domain != "" {
+		domains := strings.Split(config.Domain, ",")
+		for _, domain := range domains {
+			domain = strings.TrimSpace(domain)
+			if domain == "" {
+				continue
+			}
+
+			ctx.Cookie(&fiber.Cookie{
+				Name:     config.TokenType,
+				Value:    accessToken,
+				HTTPOnly: true,
+				Secure:   true,
+				SameSite: "None",
+				Domain:   domain,
+				Path:     "/",
+				MaxAge:   int(config.Ttl.Seconds()),
+			})
+		}
+	}
+	return accessToken, nil
 }
 
 func GenerateTokenRSA(gen *GenToken) (string, error) {
@@ -46,6 +103,7 @@ func GenerateTokenRSA(gen *GenToken) (string, error) {
 
 	claims := JwtClaims{
 		Sub:         gen.Id,
+		Email:       gen.Email,
 		Permissions: gen.Permissions,
 		IsSuperUser: gen.IsSuperUser,
 		Tenants:     gen.Tenants,

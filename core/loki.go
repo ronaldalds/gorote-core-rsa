@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (loki *LogLoki) SendLogToLoki(logData LogTelemetry) error {
+func (loki *LogLoki) SendLogToLoki(logData *LogTelemetry) error {
 	lokiURL := fmt.Sprintf("%v:%v/loki/api/v1/push", loki.Url, loki.Port)
 	timestamp := fmt.Sprintf("%d", time.Now().UnixNano())
 

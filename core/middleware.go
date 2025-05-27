@@ -26,19 +26,26 @@ func IsWsMiddleware() fiber.Handler {
 		if !websocket.IsWebSocketUpgrade(ctx) {
 			return fiber.NewError(fiber.StatusUpgradeRequired, "upgrade required")
 		}
-
 		return ctx.Next()
 	}
 }
 
+func GetAccessToken(ctx *fiber.Ctx) string {
+	authHeader := ctx.Get("Authorization")
+	if authHeader == "" {
+		authHeader = ctx.Cookies("access_token")
+	}
+	return authHeader
+}
+
 func JWTProtectedRSA(publicKey *rsa.PublicKey, permissions ...PermissionCode) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		claims, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), publicKey)
+		claims, err := GetJwtHeaderPayloadRSA(GetAccessToken(ctx), publicKey)
 		if err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 		}
 
-		if claims.Type == "refresh" {
+		if claims.Type == "refresh_token" {
 			return fiber.NewError(fiber.StatusUnauthorized, "token is refresh token")
 		}
 
@@ -162,7 +169,7 @@ func Limited(max int) func(c *fiber.Ctx) error {
 	return limiter.New(config)
 }
 
-func Telemetry(funcSend func(LogTelemetry) error, Confidential bool) fiber.Handler {
+func Telemetry(funcSend func(*LogTelemetry) error, Confidential bool) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		start := time.Now()
 		var body map[string]any
@@ -187,7 +194,7 @@ func Telemetry(funcSend func(LogTelemetry) error, Confidential bool) fiber.Handl
 				logData.Latency = time.Since(start).Milliseconds()
 				logData.ResponseBody = e.Message
 
-				if err := funcSend(logData); err != nil {
+				if err := funcSend(&logData); err != nil {
 					return fmt.Errorf("error on send log: %v", err.Error())
 				}
 			}
@@ -197,7 +204,7 @@ func Telemetry(funcSend func(LogTelemetry) error, Confidential bool) fiber.Handl
 		logData.Latency = time.Since(start).Milliseconds()
 		logData.ResponseBody = string(ctx.Response().Body())
 
-		if err := funcSend(logData); err != nil {
+		if err := funcSend(&logData); err != nil {
 			log.Println("error on send log:", err)
 		}
 		return nil

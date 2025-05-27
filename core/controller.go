@@ -15,37 +15,24 @@ func (c *Controller) LoginHandler(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	permissions := ExtractCodePermissionsByUser(user)
-
-	var tenants []uint
-	for _, tenant := range user.Tenants {
-		tenants = append(tenants, tenant.ID)
-	}
-
-	accessToken, err := GenerateTokenRSA(&GenToken{
-		Id:          user.ID,
+	accessToken, err := SetToken(ctx, user, &ConfigToken{
+		TokenType:   "access_token",
 		AppName:     c.AppName,
-		Permissions: permissions,
-		IsSuperUser: user.IsSuperUser,
-		Tenants:     tenants,
-		TimeZone:    c.AppTimeZone,
+		AppTimeZone: c.AppTimeZone,
+		Domain:      c.Domain,
 		PrivateKey:  c.PrivateKey,
 		Ttl:         c.Jwt.JwtExpireAccess,
-		Type:        "access",
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
-	refreshToken, err := GenerateTokenRSA(&GenToken{
-		Id:          user.ID,
+	refreshToken, err := SetToken(ctx, user, &ConfigToken{
+		TokenType:   "refresh_token",
 		AppName:     c.AppName,
-		Permissions: permissions,
-		IsSuperUser: user.IsSuperUser,
-		Tenants:     tenants,
-		TimeZone:    c.AppTimeZone,
+		AppTimeZone: c.AppTimeZone,
+		Domain:      c.Domain,
 		PrivateKey:  c.PrivateKey,
 		Ttl:         c.Jwt.JwtExpireRefresh,
-		Type:        "refresh",
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
@@ -60,8 +47,12 @@ func (c *Controller) LoginHandler(ctx *fiber.Ctx) error {
 
 func (c *Controller) RefrashTokenHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*RefrashToken)
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		refreshToken = ctx.Cookies("refresh_token")
+	}
 
-	claims, err := GetJwtHeaderPayloadRSA(req.RefreshToken, &c.PrivateKey.PublicKey)
+	claims, err := GetJwtHeaderPayloadRSA(refreshToken, &c.PrivateKey.PublicKey)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 	}
@@ -74,23 +65,13 @@ func (c *Controller) RefrashTokenHandler(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "failed to refrash token: user is inactive")
 	}
 
-	permissions := ExtractCodePermissionsByUser(user)
-
-	var tenants []uint
-	for _, tenant := range user.Tenants {
-		tenants = append(tenants, tenant.ID)
-	}
-
-	accessToken, err := GenerateTokenRSA(&GenToken{
-		Id:          user.ID,
+	accessToken, err := SetToken(ctx, user, &ConfigToken{
+		TokenType:   "access_token",
 		AppName:     c.AppName,
-		Permissions: permissions,
-		IsSuperUser: user.IsSuperUser,
-		Tenants:     tenants,
-		TimeZone:    c.AppTimeZone,
+		AppTimeZone: c.AppTimeZone,
+		Domain:      c.Domain,
 		PrivateKey:  c.PrivateKey,
 		Ttl:         c.Jwt.JwtExpireAccess,
-		Type:        "access",
 	})
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
@@ -226,7 +207,6 @@ func (c *Controller) ListUsersHandler(ctx *fiber.Ctx) error {
 			ID:          user.ID,
 			FirstName:   user.FirstName,
 			LastName:    user.LastName,
-			Username:    user.Username,
 			Email:       user.Email,
 			Active:      user.Active,
 			IsSuperUser: user.IsSuperUser,
@@ -266,7 +246,6 @@ func (c *Controller) CreateUserHandler(ctx *fiber.Ctx) error {
 		ID:          user.ID,
 		FirstName:   user.FirstName,
 		LastName:    user.LastName,
-		Username:    user.Username,
 		Email:       user.Email,
 		Active:      user.Active,
 		IsSuperUser: user.IsSuperUser,
@@ -280,7 +259,7 @@ func (c *Controller) CreateUserHandler(ctx *fiber.Ctx) error {
 func (c *Controller) UpdateUserHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*UserSchema)
 
-	claims, err := GetJwtHeaderPayloadRSA(ctx.Get("Authorization"), &c.PrivateKey.PublicKey)
+	claims, err := GetJwtHeaderPayloadRSA(GetAccessToken(ctx), &c.PrivateKey.PublicKey)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 	}
@@ -306,7 +285,6 @@ func (c *Controller) UpdateUserHandler(ctx *fiber.Ctx) error {
 		ID:          user.ID,
 		FirstName:   user.FirstName,
 		LastName:    user.LastName,
-		Username:    user.Username,
 		Email:       user.Email,
 		Active:      user.Active,
 		IsSuperUser: user.IsSuperUser,

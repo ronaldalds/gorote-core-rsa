@@ -15,7 +15,6 @@ func (s *Service) saveUserAdmin() error {
 		FirstOrCreate(&User{
 			FirstName:   s.Super.SuperName,
 			LastName:    "Admin",
-			Username:    s.Super.SuperUser,
 			Email:       s.Super.SuperEmail,
 			Password:    hashPassword,
 			Active:      true,

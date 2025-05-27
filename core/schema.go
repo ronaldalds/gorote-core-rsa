@@ -42,11 +42,11 @@ type UserSchema struct {
 	ID          uint   `json:"id"`
 	FirstName   string `json:"firstName" validate:"required,min=1,max=50"`
 	LastName    string `json:"lastName" validate:"omitempty,max=50"`
-	Username    string `json:"username" validate:"required,min=3,max=50"`
 	Email       string `json:"email" validate:"required,email"`
 	Active      bool   `json:"active"`
 	IsSuperUser bool   `json:"isSuperUser"`
 	Roles       []uint `json:"roles"`
+	Tenants     []uint `json:"tenants"`
 	Phone1      string `json:"phone1" validate:"required,e164"`
 	Phone2      string `json:"phone2" validate:"omitempty,e164"`
 }
