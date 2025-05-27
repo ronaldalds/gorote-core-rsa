@@ -5,7 +5,7 @@ import "github.com/gofiber/fiber/v2"
 func (r *Router) RegisterRouter(router fiber.Router) {
 	r.Check(router.Group("/check"))
 	r.Health(router.Group("/health"))
-	r.Auth(router.Group("/auth", Limited(10)))
+	r.Auth(router.Group("/auth", Limited(60)))
 	r.RefrashToken(router.Group("/refrash"))
 	r.User(router.Group("/users"))
 	r.Role(router.Group("/roles"))
