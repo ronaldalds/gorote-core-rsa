@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type HTTPMethod string
@@ -53,7 +54,8 @@ func SendHttpRequest(params HttpRequestParams) (*http.Response, error) {
 		req.Header.Add(key, value)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao enviar a requisição: %v", err)
 	}
