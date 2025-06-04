@@ -6,6 +6,14 @@ import (
 	"gorm.io/gorm"
 )
 
+type InitRabbitMQ struct {
+	User     string
+	Password string
+	Host     string
+	Port     int
+	Vh       string
+}
+
 type LogLoki struct {
 	AppName string
 	Url     string
