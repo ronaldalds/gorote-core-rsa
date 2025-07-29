@@ -63,7 +63,6 @@ func (r *InitRedis) NewRedis() (*redis.Client, error) {
 	client := redis.NewClient(
 		&redis.Options{Addr: fmt.Sprintf("%s:%d", r.Host, r.Port), Password: r.Password, DB: r.Database},
 	)
-	client = client.WithContext(ctx)
 	_, err := client.Ping(ctx).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %v", err)
@@ -83,7 +82,6 @@ func (g *InitGorm) NewGorm() (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the database: %v", err)
 	}
-	db = db.WithContext(ctx)
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get *sql.DB from GORM: %v", err)
