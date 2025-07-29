@@ -1,11 +1,14 @@
 package core
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/ronaldalds/gorote-core-rsa/gorote"
+)
 
 func (r *Router) RegisterRouter(router fiber.Router) {
 	r.Check(router.Group("/check"))
 	r.Health(router.Group("/health"))
-	r.Auth(router.Group("/auth", Limited(60)))
+	r.Auth(router.Group("/auth", gorote.Limited(60)))
 	r.RefrashToken(router.Group("/refrash"))
 	r.User(router.Group("/users"))
 	r.Role(router.Group("/roles"))
@@ -13,77 +16,62 @@ func (r *Router) RegisterRouter(router fiber.Router) {
 }
 
 func (r *Router) Check(router fiber.Router) {
-	router.Get(
-		"/",
-		Check(),
-	)
+	router.Get("/", gorote.Check())
 }
 
 func (r *Router) Health(router fiber.Router) {
-	router.Get(
-		"/",
-		r.HealthGorm(),
-	)
+	router.Get("/", r.Controller.HealthHandler)
 }
 
 func (r *Router) Auth(router fiber.Router) {
-	router.Post(
-		"/login",
-		ValidationMiddleware(&Login{}),
+	router.Post("/login",
+		gorote.ValidationMiddleware(&Login{}),
 		r.Controller.LoginHandler,
 	)
 }
 
 func (r *Router) RefrashToken(router fiber.Router) {
-	router.Post(
-		"/",
-		ValidationMiddleware(&RefrashToken{}),
+	router.Post("/",
+		gorote.ValidationMiddleware(&RefrashToken{}),
 		r.Controller.RefrashTokenHandler,
 	)
 }
 
 func (r *Router) User(router fiber.Router) {
-	router.Get(
-		"/",
-		ValidationMiddleware(&Paginate{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionViewUser),
+	router.Get("/",
+		gorote.ValidationMiddleware(&Paginate{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionViewUser)),
 		r.Controller.ListUsersHandler,
 	)
-	router.Post(
-		"/",
-		ValidationMiddleware(&CreateUser{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionCreateUser),
+	router.Post("/",
+		gorote.ValidationMiddleware(&CreateUser{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionCreateUser)),
 		r.Controller.CreateUserHandler,
 	)
-	router.Put(
-		"/:id",
-		ValidationMiddleware(&UserParam{}),
-		ValidationMiddleware(&UserSchema{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey),
+	router.Put("/:id",
+		gorote.ValidationMiddleware(&UserParam{}), gorote.ValidationMiddleware(&UserSchema{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute()),
 		r.Controller.UpdateUserHandler,
 	)
 }
 
 func (r *Router) Role(router fiber.Router) {
-	router.Get(
-		"/",
-		ValidationMiddleware(&Paginate{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey),
+	router.Get("/",
+		gorote.ValidationMiddleware(&Paginate{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute()),
 		r.Controller.ListRolesHandler,
 	)
-	router.Post(
-		"/",
-		ValidationMiddleware(&CreateRole{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionCreateRole),
+	router.Post("/",
+		gorote.ValidationMiddleware(&CreateRole{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionCreateRole)),
 		r.Controller.CreateRoleHandler,
 	)
 }
 
 func (r *Router) Permission(router fiber.Router) {
-	router.Get(
-		"/",
-		ValidationMiddleware(&Paginate{}),
-		JWTProtectedRSA(&r.PrivateKey.PublicKey, PermissionViewPermission),
+	router.Get("/",
+		gorote.ValidationMiddleware(&Paginate{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionViewPermission)),
 		r.Controller.ListPermissiontHandler,
 	)
 }

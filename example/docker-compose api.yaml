@@ -1,0 +1,79 @@
+services:
+  app:
+    container_name: ${APP_NAME:-base}
+    build: .
+    ports:
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+    env_file:
+      - .env
+
+  psql:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SQL_DATABASE}
+      POSTGRES_USER: ${SQL_USERNAME}
+      POSTGRES_PASSWORD: ${SQL_PASSWORD}
+    ports:
+      - "${SQL_PORT:-5432}:5432"
+    volumes:
+      - psql_v:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_v:/var/lib/pgadmin
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis_service
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-example}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-example}
+    volumes:
+      - redis_v:/data
+
+  redisinsight:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-example}
+
+  mongo:
+    image: mongo:noble
+    container_name: mongo
+    ports:
+      - "${NOSQL_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${NOSQL_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${NOSQL_PASSWORD:-example}
+    volumes:
+      - mongo_v:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    ports:
+      - "8082:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${NOSQL_USERNAME:-root}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${NOSQL_PASSWORD:-example}
+      ME_CONFIG_MONGODB_SERVER: mongo
+
+volumes:
+  psql_v:
+  pgadmin_v:
+  redis_v:
+  mongo_v:

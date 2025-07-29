@@ -2,19 +2,18 @@ package example
 
 import (
 	"crypto/rsa"
-	"log"
-	"time"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/ronaldalds/gorote-core-rsa/core"
+	"gorm.io/gorm"
 )
 
 type AppConfig struct {
 	*fiber.App
-	*core.GormStore
-	AppName     string
-	AppTimeZone string
-	PublicKey   *rsa.PublicKey
+	*gorm.DB
+	AppName   string
+	TimeZone  string
+	PublicKey *rsa.PublicKey
 }
 
 type Router struct {
@@ -29,37 +28,22 @@ type Controller struct {
 
 type Service struct {
 	*AppConfig
-	TimeUCT *time.Location
 }
 
-func New(config *AppConfig) *Router {
-	if err := config.PreReady(); err != nil {
-		log.Fatal("err on pre ready: ", err.Error())
-	}
-	return &Router{
-		AppConfig:  config,
-		Controller: NewController(config),
-	}
-}
-
-func NewController(config *AppConfig) *Controller {
-	return &Controller{
+func NewMicroService(config *AppConfig, ready ...func(*AppConfig) error) (*Router, error) {
+	router := &Router{
 		AppConfig: config,
-		Service:   NewService(config),
+		Controller: &Controller{
+			AppConfig: config,
+			Service: &Service{
+				AppConfig: config,
+			},
+		},
 	}
-}
-
-func NewService(config *AppConfig) *Service {
-	location, err := time.LoadLocation(config.AppTimeZone)
-	if err != nil {
-		log.Fatal("invalid timezone: ", err.Error())
+	for _, r := range ready {
+		if err := r(config); err != nil {
+			return nil, fmt.Errorf("err on ready: %v", err.Error())
+		}
 	}
-	service := &Service{
-		AppConfig: config,
-		TimeUCT:   location,
-	}
-	if err := service.PosReady(); err != nil {
-		log.Fatal("err on pos ready: ", err.Error())
-	}
-	return service
+	return router, nil
 }

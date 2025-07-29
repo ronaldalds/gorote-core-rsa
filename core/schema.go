@@ -51,37 +51,23 @@ type UserSchema struct {
 	Phone2      string `json:"phone2" validate:"omitempty,e164"`
 }
 
-type RoleSchema struct {
-	ID          uint               `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Permissions []PermissionSchema `json:"permissions"`
-}
-
-type PermissionSchema struct {
-	ID          uint   `json:"id"`
-	Code        string `json:"code"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
 type ListUser struct {
-	Page  uint         `json:"page" validate:"required,min=1"`
-	Limit uint         `json:"limit" validate:"required"`
-	Data  []UserSchema `json:"data"`
-	Total uint         `json:"total" validate:"required"`
+	Page  uint   `json:"page" validate:"required,min=1"`
+	Limit uint   `json:"limit" validate:"required"`
+	Data  []User `json:"data"`
+	Total uint   `json:"total" validate:"required"`
 }
 
 type ListRole struct {
-	Page  uint         `json:"page"`
-	Limit uint         `json:"limit"`
-	Data  []RoleSchema `json:"data"`
-	Total uint         `json:"total"`
+	Page  uint   `json:"page"`
+	Limit uint   `json:"limit"`
+	Data  []Role `json:"data"`
+	Total uint   `json:"total"`
 }
 
 type ListPermission struct {
-	Page  uint               `json:"page" validate:"required,min=1"`
-	Limit uint               `json:"limit" validate:"required"`
-	Data  []PermissionSchema `json:"data"`
-	Total uint               `json:"total" validate:"required"`
+	Page  uint         `json:"page" validate:"required,min=1"`
+	Limit uint         `json:"limit" validate:"required"`
+	Data  []Permission `json:"data"`
+	Total uint         `json:"total" validate:"required"`
 }

@@ -3,8 +3,13 @@ package core
 import (
 	"fmt"
 
+	"github.com/ronaldalds/gorote-core-rsa/gorote"
 	"gorm.io/gorm"
 )
+
+func (s *Service) Health() (*gorote.Health, error) {
+	return gorote.HealthGorm(s.DB)
+}
 
 func (s *Service) Login(req *Login) (*User, error) {
 	var user User
@@ -16,7 +21,7 @@ func (s *Service) Login(req *Login) (*User, error) {
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to login: username or password is incorrect")
 	}
-	if !CheckPasswordHash(req.Password, user.Password) {
+	if !gorote.CheckPasswordHash(req.Password, user.Password) {
 		return nil, fmt.Errorf("failed to login: username or password is incorrect")
 	}
 	if !user.Active {

@@ -1,8 +1,6 @@
 package example
 
-import (
-	"github.com/ronaldalds/gorote-core-rsa/core"
-)
+import "github.com/ronaldalds/gorote-core-rsa/core"
 
 const (
 	PermissionExampleCreate core.PermissionCode = "create_example"

@@ -2,15 +2,20 @@ package core
 
 import (
 	"crypto/rsa"
-	"log"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
+	"gorm.io/gorm"
 )
 
 type AppJwt struct {
 	JwtExpireAccess  time.Duration
 	JwtExpireRefresh time.Duration
+	JwtSecret        string
 }
 
 type AppSuper struct {
@@ -23,58 +28,55 @@ type AppSuper struct {
 
 type AppConfig struct {
 	*fiber.App
-	*GormStore
+	*gorm.DB
 	AppName     string
 	AppTimeZone string
 	PrivateKey  *rsa.PrivateKey
-	Jwt         *AppJwt
+	Jwt         AppJwt
 	Super       *AppSuper
 	Domain      string
+	Meter       *metric.Meter
+	Trace       *trace.Tracer
+	Logger      *slog.Logger
 }
 
 type Router struct {
-	*AppConfig
-	Controller *Controller
+	AppConfig
+	Controller Controller
 }
 
 type Controller struct {
-	*AppConfig
-	Service *Service
+	AppConfig
+	Service Service
 }
 
 type Service struct {
-	*AppConfig
-	TimeUCT *time.Location
+	AppConfig
 }
 
-func New(config *AppConfig) *Router {
-	if err := config.PreReady(); err != nil {
-		log.Fatal("err on pre ready: ", err.Error())
+func New(config AppConfig, ready ...func(AppConfig) error) (*Router, error) {
+	if err := migrate(config); err != nil {
+		return nil, fmt.Errorf("err on migrate: %v", err.Error())
 	}
-	return &Router{
-		AppConfig:  config,
-		Controller: NewController(config),
+	if config.Super != nil {
+		if err := saveUserAdmin(config); err != nil {
+			return nil, fmt.Errorf("err on save admin: %v", err.Error())
+		}
 	}
-}
-
-func NewController(config *AppConfig) *Controller {
-	return &Controller{
+	if err := savePermissions(config); err != nil {
+		return nil, fmt.Errorf("err on save permissions: %v", err.Error())
+	}
+	router := &Router{
 		AppConfig: config,
-		Service:   NewService(config),
+		Controller: Controller{
+			AppConfig: config,
+			Service:   Service{config},
+		},
 	}
-}
-
-func NewService(config *AppConfig) *Service {
-	location, err := time.LoadLocation(config.AppTimeZone)
-	if err != nil {
-		log.Fatal("invalid timezone: ", err.Error())
+	for _, r := range ready {
+		if err := r(config); err != nil {
+			return nil, fmt.Errorf("err on ready: %v", err.Error())
+		}
 	}
-	service := &Service{
-		AppConfig: config,
-		TimeUCT:   location,
-	}
-	if err := service.PosReady(); err != nil {
-		log.Fatal("err on pos ready: ", err.Error())
-	}
-	return service
+	return router, nil
 }

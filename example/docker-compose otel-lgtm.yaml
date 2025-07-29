@@ -1,0 +1,21 @@
+
+version: "3.8"
+services:
+  otel-collector:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "3000:3000"   # Grafana UI
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      - otel-collector
+    environment:
+      - OTEL_METRIC_EXPORT_INTERVAL=500
+    ports:
+      - "8080:8080"
