@@ -2,8 +2,8 @@ package gorote
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"strconv"
 	"sync"
@@ -40,7 +40,7 @@ func Redelivery(b amqp.Delivery) int {
 func (r *InitRabbitMQ) Connect(vhost string) (*ConnRabbitMQ, error) {
 	user := url.QueryEscape(r.User)
 	pass := url.QueryEscape(r.Password)
-	vhost := url.PathEscape(vhost)
+	vhost = url.PathEscape(vhost)
 	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", user, pass, r.Host, r.Port, vhost)
 
 	conn, err := amqp.Dial(uri)
