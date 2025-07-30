@@ -16,7 +16,6 @@ type InitRabbitMQ struct {
 	Password string
 	Host     string
 	Port     int
-	Vh       string
 }
 
 type ConnRabbitMQ struct {
@@ -38,10 +37,10 @@ func Redelivery(b amqp.Delivery) int {
 	return reenvio
 }
 
-func (r *InitRabbitMQ) Connect(ctx context.Context) (*ConnRabbitMQ, error) {
+func (r *InitRabbitMQ) Connect(vhost string) (*ConnRabbitMQ, error) {
 	user := url.QueryEscape(r.User)
 	pass := url.QueryEscape(r.Password)
-	vhost := url.PathEscape(r.Vh)
+	vhost := url.PathEscape(vhost)
 	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", user, pass, r.Host, r.Port, vhost)
 
 	conn, err := amqp.Dial(uri)
@@ -63,7 +62,7 @@ func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, 
 		return fmt.Errorf("falha ao configurar QoS: %w", err)
 	}
 
-	msgs, err := r.Channel.Consume(queue, nameConsumer, false, true, false, false, nil)
+	msgs, err := r.Channel.ConsumeWithContext(ctx, queue, nameConsumer, false, true, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("falha ao registrar consumidor: %w", err)
 	}
@@ -75,12 +74,6 @@ func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, 
 		select {
 		case <-ctx.Done():
 			wg.Wait()
-			if err := r.Channel.Close(); err != nil {
-				log.Printf("Erro ao fechar canal: %v", err)
-			}
-			if err := r.Connection.Close(); err != nil {
-				log.Printf("Erro ao fechar conexão: %v", err)
-			}
 			return fmt.Errorf("contexto encerrado. Finalizando RabbitMQ")
 		case d, ok := <-msgs:
 			if !ok {
@@ -93,7 +86,6 @@ func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, 
 					<-sem
 					wg.Done()
 				}()
-				fmt.Println("[Worker] Processando nova mensagem...")
 				if err := handler(ctx, msg); err != nil {
 					d.Nack(false, true)
 					return
@@ -104,4 +96,25 @@ func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, 
 			}(d)
 		}
 	}
+}
+
+func (r *ConnRabbitMQ) PublishStruct(ctx context.Context, queueName string, data any) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("erro ao serializar struct: %w", err)
+	}
+
+	if err := r.Channel.PublishWithContext(ctx,
+		"",
+		queueName,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		}); err != nil {
+		return fmt.Errorf("erro ao publicar na fila: %w", err)
+	}
+
+	return nil
 }
