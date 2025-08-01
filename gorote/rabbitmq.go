@@ -62,7 +62,7 @@ func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, 
 		return fmt.Errorf("falha ao configurar QoS: %w", err)
 	}
 
-	msgs, err := r.Channel.ConsumeWithContext(ctx, queue, nameConsumer, false, true, false, false, nil)
+	msgs, err := r.Channel.ConsumeWithContext(ctx, queue, nameConsumer, false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("falha ao registrar consumidor: %w", err)
 	}
