@@ -5,7 +5,7 @@ import (
 	"github.com/ronaldalds/gorote-core-rsa/gorote"
 )
 
-func (r *Router) RegisterRouter(router fiber.Router) {
+func (r *appRouter) RegisterRouter(router fiber.Router) {
 	r.Check(router.Group("/check"))
 	r.Health(router.Group("/health"))
 	r.Auth(router.Group("/auth", gorote.Limited(60)))
@@ -15,63 +15,68 @@ func (r *Router) RegisterRouter(router fiber.Router) {
 	r.Permission(router.Group("/permissions"))
 }
 
-func (r *Router) Check(router fiber.Router) {
+func (r *appRouter) Check(router fiber.Router) {
 	router.Get("/", gorote.Check())
 }
 
-func (r *Router) Health(router fiber.Router) {
-	router.Get("/", r.Controller.HealthHandler)
+func (r *appRouter) Health(router fiber.Router) {
+	router.Get("/", r.controller.healthHandler)
 }
 
-func (r *Router) Auth(router fiber.Router) {
+func (r *appRouter) Auth(router fiber.Router) {
 	router.Post("/login",
-		gorote.ValidationMiddleware(&Login{}),
-		r.Controller.LoginHandler,
+		gorote.ValidationMiddleware(&login{}),
+		r.controller.loginHandler,
 	)
 }
 
-func (r *Router) RefrashToken(router fiber.Router) {
+func (r *appRouter) RefrashToken(router fiber.Router) {
 	router.Post("/",
-		gorote.ValidationMiddleware(&RefrashToken{}),
-		r.Controller.RefrashTokenHandler,
+		gorote.ValidationMiddleware(&refrashToken{}),
+		r.controller.refrashTokenHandler,
 	)
 }
 
-func (r *Router) User(router fiber.Router) {
+func (r *appRouter) User(router fiber.Router) {
 	router.Get("/",
-		gorote.ValidationMiddleware(&Paginate{}),
-		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionViewUser)),
-		r.Controller.ListUsersHandler,
+		gorote.ValidationMiddleware(&paginateReq{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute(PermissionViewUser)),
+		r.controller.listUsersHandler,
+	)
+	router.Get("/:id",
+		gorote.ValidationMiddleware(&recieveUser{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute(PermissionViewUser)),
+		r.controller.recieveUserHandler,
 	)
 	router.Post("/",
-		gorote.ValidationMiddleware(&CreateUser{}),
-		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionCreateUser)),
-		r.Controller.CreateUserHandler,
+		gorote.ValidationMiddleware(&createUser{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute(PermissionCreateUser)),
+		r.controller.createUserHandler,
 	)
 	router.Put("/:id",
-		gorote.ValidationMiddleware(&UserParam{}), gorote.ValidationMiddleware(&UserSchema{}),
-		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute()),
-		r.Controller.UpdateUserHandler,
+		gorote.ValidationMiddleware(&schemaUser{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute()),
+		r.controller.updateUserHandler,
 	)
 }
 
-func (r *Router) Role(router fiber.Router) {
+func (r *appRouter) Role(router fiber.Router) {
 	router.Get("/",
-		gorote.ValidationMiddleware(&Paginate{}),
-		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute()),
-		r.Controller.ListRolesHandler,
+		gorote.ValidationMiddleware(&paginateReq{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute()),
+		r.controller.listRolesHandler,
 	)
 	router.Post("/",
-		gorote.ValidationMiddleware(&CreateRole{}),
-		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionCreateRole)),
-		r.Controller.CreateRoleHandler,
+		gorote.ValidationMiddleware(&createRole{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute(PermissionCreateRole)),
+		r.controller.createRoleHandler,
 	)
 }
 
-func (r *Router) Permission(router fiber.Router) {
+func (r *appRouter) Permission(router fiber.Router) {
 	router.Get("/",
-		gorote.ValidationMiddleware(&Paginate{}),
-		gorote.JWTProtectedRSA(&JwtClaims{}, &r.PrivateKey.PublicKey, ProtectedRoute(PermissionViewPermission)),
-		r.Controller.ListPermissiontHandler,
+		gorote.ValidationMiddleware(&paginateReq{}),
+		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute(PermissionViewPermission)),
+		r.controller.listPermissiontHandler,
 	)
 }

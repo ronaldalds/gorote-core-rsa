@@ -7,8 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func migrate(config AppConfig) error {
-	if err := config.DB.AutoMigrate(
+func migrate(config configLoad) error {
+	if err := config.db().AutoMigrate(
 		&User{},
 		&Role{},
 		&Permission{},
@@ -19,40 +19,42 @@ func migrate(config AppConfig) error {
 	return nil
 }
 
-func saveUserAdmin(config AppConfig) error {
-	hashPassword, err := gorote.HashPassword(config.Super.SuperPass)
+func saveUserAdmin(config configLoad) error {
+	hashPassword, err := gorote.HashPassword(config.super().SuperPass)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %s", err.Error())
 	}
-	if err := config.DB.
+	if err := config.db().
 		FirstOrCreate(&User{
-			FirstName:   config.Super.SuperName,
-			LastName:    "Admin",
-			Email:       config.Super.SuperEmail,
+			Email:       config.super().SuperEmail,
 			Password:    hashPassword,
 			Active:      true,
 			IsSuperUser: true,
-			Phone1:      config.Super.SuperPhone,
 		}).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func savePermissions(config AppConfig) error {
+func savePermissions(config configLoad) error {
 	permissions := []PermissionCode{
-		PermissionSuperUser, PermissionCreateUser,
-		PermissionViewUser, PermissionUpdateUser,
-		PermissionCreatePermission, PermissionViewPermission,
-		PermissionUpdatePermission, PermissionCreateRole,
-		PermissionViewRole, PermissionUpdateRole,
+		PermissionAdmin,
+		PermissionCreateUser,
+		PermissionViewUser,
+		PermissionUpdateUser,
+		PermissionCreatePermission,
+		PermissionViewPermission,
+		PermissionUpdatePermission,
+		PermissionCreateRole,
+		PermissionViewRole,
+		PermissionUpdateRole,
 	}
 	for _, permission := range permissions {
 		var p Permission
-		if err := config.DB.Where("code = ?", string(permission)).First(&p).Error; err != nil {
+		if err := config.db().Where("code = ?", string(permission)).First(&p).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				p = Permission{Code: string(permission), Name: string(permission)}
-				if err := config.DB.Create(&p).Error; err != nil {
+				p = Permission{Code: string(permission)}
+				if err := config.db().Create(&p).Error; err != nil {
 					return err
 				}
 			} else {

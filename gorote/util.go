@@ -1,6 +1,7 @@
 package gorote
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"os"
 	"reflect"
@@ -117,34 +118,28 @@ func validateStruct(data any) error {
 	return nil
 }
 
-func GetEnvAsTime(key string, required bool, defaultValue ...int) time.Duration {
+func MustEnvAsTime(key string, defaultValue ...int) time.Duration {
 	valueStr := os.Getenv(key)
 	if valueStr == "" {
-		if required {
-			panic(fmt.Sprintf("variable %s is required", key))
-		}
 		if len(defaultValue) > 0 {
-			return time.Duration(defaultValue[0]) * time.Minute
+			return time.Duration(defaultValue[0]) * time.Second
 		}
-		return 0
+		panic(fmt.Sprintf("variable %s is required", key))
 	}
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
 		panic(fmt.Sprintf("failed to convert %s to integer: %v", key, err))
 	}
-	return time.Duration(value) * time.Minute
+	return time.Duration(value) * time.Second
 }
 
-func GetEnvAsInt(key string, required bool, defaultValue ...int) int {
+func MustEnvAsInt(key string, defaultValue ...int) int {
 	valueStr := os.Getenv(key)
 	if valueStr == "" {
-		if required {
-			panic(fmt.Sprintf("variable %s is required", key))
-		}
 		if len(defaultValue) > 0 {
 			return defaultValue[0]
 		}
-		return 0
+		panic(fmt.Sprintf("variable %s is required", key))
 	}
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
@@ -153,16 +148,29 @@ func GetEnvAsInt(key string, required bool, defaultValue ...int) int {
 	return value
 }
 
-func GetEnv(key string, required bool, defaultValue ...string) string {
+func MustEnvAsString(key string, defaultValue ...string) string {
 	value := os.Getenv(key)
 	if value == "" {
-		if required {
-			panic(fmt.Sprintf("variable %s is required", key))
-		}
 		if len(defaultValue) > 0 {
 			return defaultValue[0]
 		}
-		return ""
+		panic(fmt.Sprintf("variable %s is required", key))
 	}
 	return value
+}
+
+func MustEnvPublicKeyRSA(key string) *rsa.PublicKey {
+	value := os.Getenv(key)
+	if value == "" {
+		panic(fmt.Sprintf("variable %s is required", key))
+	}
+	return MustReadPublicKeyFromString(value)
+}
+
+func MustEnvPrivateKeyRSA(key string) *rsa.PrivateKey {
+	value := os.Getenv(key)
+	if value == "" {
+		panic(fmt.Sprintf("variable %s is required", key))
+	}
+	return MustReadPrivateKeyFromString(value)
 }

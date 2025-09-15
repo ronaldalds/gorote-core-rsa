@@ -2,8 +2,10 @@ package gorote
 
 import (
 	"context"
-	"fmt"
+	"log"
 
+	"github.com/gofiber/contrib/otelfiber"
+	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -13,7 +15,6 @@ import (
 	openmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	opentrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -21,7 +22,7 @@ import (
 func TelemetryConn(endpoint string) (*grpc.ClientConn, error) {
 	conn, err := grpc.NewClient(endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
+		return nil, err
 	}
 	return conn, nil
 }
@@ -56,13 +57,39 @@ func TelemetryLogger(ctx context.Context, res *resource.Resource, conn *grpc.Cli
 	return provider, nil
 }
 
-func TelemetryResource(ctx context.Context, name string, version string) (*resource.Resource, error) {
-	res, err := resource.New(ctx, resource.WithAttributes(
-		semconv.ServiceNameKey.String(name),
-		semconv.ServiceVersionKey.String(version),
-	))
+func TelemetryFiber(ctx context.Context, app *fiber.App, res *resource.Resource, collectorOpenTelemetry string) error {
+	conn, err := TelemetryConn(collectorOpenTelemetry)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return res, nil
+
+	cleanupTrace, err := TelemetryTrace(ctx, res, conn)
+	if err != nil {
+		return err
+	}
+
+	cleanupMetric, err := TelemetryMetric(ctx, res, conn)
+	if err != nil {
+		return err
+	}
+
+	cleanupLogger, err := TelemetryLogger(ctx, res, conn)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		<-ctx.Done()
+		cleanupLogger.Shutdown(ctx)
+		cleanupMetric.Shutdown(ctx)
+		cleanupTrace.Shutdown(ctx)
+		conn.Close()
+		log.Println("telemetry shutdown")
+	}()
+
+	app.Use(otelfiber.Middleware(
+		otelfiber.WithTracerProvider(cleanupTrace),
+		otelfiber.WithMeterProvider(cleanupMetric),
+	))
+	return nil
 }

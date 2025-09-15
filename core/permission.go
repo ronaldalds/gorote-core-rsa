@@ -3,7 +3,7 @@ package core
 type PermissionCode string
 
 const (
-	PermissionSuperUser        PermissionCode = "super_user"
+	PermissionAdmin            PermissionCode = "admin_user"
 	PermissionCreateUser       PermissionCode = "create_user"
 	PermissionViewUser         PermissionCode = "view_user"
 	PermissionUpdateUser       PermissionCode = "update_user"

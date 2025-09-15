@@ -15,7 +15,7 @@ COPY . .
 RUN go build -o main .
 
 # Etapa 2: imagem final mais leve
-FROM debian:bookworm-slim
+FROM debian:stable-backports
 
 # Instala apenas o Chromium para rodar o navegador headless
 RUN apt-get update && \

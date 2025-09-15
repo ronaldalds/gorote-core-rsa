@@ -2,48 +2,67 @@ package example
 
 import (
 	"crypto/rsa"
-	"fmt"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/contrib/websocket"
 	"gorm.io/gorm"
 )
 
-type AppConfig struct {
-	*fiber.App
+type Config struct {
 	*gorm.DB
-	AppName   string
-	TimeZone  string
 	PublicKey *rsa.PublicKey
 }
 
-type Router struct {
-	*AppConfig
-	Controller *Controller
+func (c *Config) db() *gorm.DB {
+	return c.DB
 }
 
-type Controller struct {
-	*AppConfig
-	Service *Service
+func (c *Config) publicKeyRSA() *rsa.PublicKey {
+	return c.PublicKey
 }
 
-type Service struct {
-	*AppConfig
+type configLoad interface {
+	db() *gorm.DB
+	publicKeyRSA() *rsa.PublicKey
 }
 
-func NewMicroService(config *AppConfig, ready ...func(*AppConfig) error) (*Router, error) {
-	router := &Router{
-		AppConfig: config,
-		Controller: &Controller{
-			AppConfig: config,
-			Service: &Service{
-				AppConfig: config,
-			},
-		},
+type controller interface {
+	websocketHandler(ctx *websocket.Conn)
+}
+
+type servicer interface {
+	getConnection(id uint) (*websocket.Conn, bool)
+	broadcast(message any)
+	sendTo(id uint, message any) error
+}
+
+type appRouter struct {
+	publicKey  *rsa.PublicKey
+	controller controller
+}
+
+type appController struct {
+	service servicer
+}
+
+type appService struct {
+	configLoad
+}
+
+func New(config configLoad) (*appRouter, error) {
+	if err := config.db().AutoMigrate(); err != nil {
+		return nil, err
 	}
-	for _, r := range ready {
-		if err := r(config); err != nil {
-			return nil, fmt.Errorf("err on ready: %v", err.Error())
-		}
+
+	service := appService{config}
+
+	controller := appController{
+		service: &service,
 	}
-	return router, nil
+
+	router := appRouter{
+		publicKey:  config.publicKeyRSA(),
+		controller: &controller,
+	}
+
+	return &router, nil
 }

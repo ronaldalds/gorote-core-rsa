@@ -8,11 +8,9 @@ import (
 )
 
 type JwtClaims struct {
-	Sub         uint     `json:"sub"`
-	Email       string   `json:"email"`
 	IsSuperUser bool     `json:"isSuperUser"`
 	Permissions []string `json:"permissions"`
-	Tenants     []uint   `json:"tenants"`
+	Tenants     []string `json:"tenants"`
 	Type        string   `json:"type"`
 	jwt.RegisteredClaims
 }

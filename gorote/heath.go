@@ -24,7 +24,7 @@ type Health struct {
 
 func HealthGorm(s *gorm.DB) (*Health, error) {
 	var stats Health
-	contx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	contx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if s == nil {
 		return nil, fmt.Errorf("failed to connect to DB")

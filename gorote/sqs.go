@@ -42,12 +42,12 @@ func (s *InitSQS) Connect(ctx context.Context) (*ConnSQS, error) {
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("falha ao carregar configuração: %w", err)
+		return nil, err
 	}
 	return &ConnSQS{sqs.NewFromConfig(customConfig)}, nil
 }
 
-func (s ConnSQS) ConsumerMessages(ctx context.Context, worker int, queueURL string, handler HandlesSQS) error {
+func (s ConnSQS) ConsumerMessages(ctx context.Context, worker int, queueURL string, handler HandlesSQS, errHandlers ...HandlesSQS) error {
 	if worker > 10 || worker <= 0 {
 		return fmt.Errorf("quantidade de workers inválida min: 1, max: 10")
 	}
@@ -61,7 +61,7 @@ func (s ConnSQS) ConsumerMessages(ctx context.Context, worker int, queueURL stri
 		})
 		if err != nil {
 			time.Sleep(2 * time.Second)
-			return fmt.Errorf("erro ao receber mensagens: %v", err)
+			return err
 		}
 
 		for _, msg := range resp.Messages {
@@ -78,6 +78,11 @@ func (s ConnSQS) ConsumerMessages(ctx context.Context, worker int, queueURL stri
 					}()
 					if err := handler(ctx, m); err != nil {
 						log.Printf("Erro ao processar mensagem: %v", err)
+						for _, errHandler := range errHandlers {
+							if err := errHandler(ctx, msg); err != nil {
+								return
+							}
+						}
 						return
 					}
 					_, err := s.DeleteMessage(ctx, &sqs.DeleteMessageInput{

@@ -40,3 +40,17 @@ func TestHashPasswordAndCheck(t *testing.T) {
 		t.Error("hash deveria falhar para senha errada")
 	}
 }
+
+func TestEnvAsString(t *testing.T) {
+	password := "Senha@123"
+	hash, err := HashPassword(password)
+	if err != nil {
+		t.Fatalf("erro ao hashear senha: %v", err)
+	}
+	if !CheckPasswordHash(password, hash) {
+		t.Error("senha não bate com o hash gerado")
+	}
+	if CheckPasswordHash("outraSenha", hash) {
+		t.Error("hash deveria falhar para senha errada")
+	}
+}

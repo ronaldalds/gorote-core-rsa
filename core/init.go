@@ -2,81 +2,105 @@ package core
 
 import (
 	"crypto/rsa"
-	"fmt"
-	"log/slog"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
 
-type AppJwt struct {
+type jwtConfig struct {
 	JwtExpireAccess  time.Duration
 	JwtExpireRefresh time.Duration
-	JwtSecret        string
 }
 
-type AppSuper struct {
-	SuperName  string
-	SuperUser  string
+type super struct {
 	SuperEmail string
 	SuperPass  string
-	SuperPhone string
 }
 
-type AppConfig struct {
-	*fiber.App
+type Config struct {
 	*gorm.DB
-	AppName     string
-	AppTimeZone string
-	PrivateKey  *rsa.PrivateKey
-	Jwt         AppJwt
-	Super       *AppSuper
-	Domain      string
-	Meter       *metric.Meter
-	Trace       *trace.Tracer
-	Logger      *slog.Logger
+	PrivateKey       *rsa.PrivateKey
+	JwtExpireAccess  time.Duration
+	JwtExpireRefresh time.Duration
+	SuperEmail       string
+	SuperPass        string
+	Domain           string
 }
 
-type Router struct {
-	AppConfig
-	Controller Controller
+func (c *Config) db() *gorm.DB {
+	return c.DB
 }
 
-type Controller struct {
-	AppConfig
-	Service Service
+func (c *Config) domain() string {
+	return c.Domain
 }
 
-type Service struct {
-	AppConfig
-}
-
-func New(config AppConfig, ready ...func(AppConfig) error) (*Router, error) {
-	if err := migrate(config); err != nil {
-		return nil, fmt.Errorf("err on migrate: %v", err.Error())
+func (c *Config) jwt() *jwtConfig {
+	return &jwtConfig{
+		JwtExpireAccess:  c.JwtExpireAccess,
+		JwtExpireRefresh: c.JwtExpireRefresh,
 	}
-	if config.Super != nil {
+}
+
+func (c *Config) super() *super {
+	if c.SuperEmail == "" || c.SuperPass == "" {
+		return nil
+	}
+	return &super{
+		SuperEmail: c.SuperEmail,
+		SuperPass:  c.SuperPass,
+	}
+}
+
+func (c *Config) privateKeyRSA() *rsa.PrivateKey {
+	return c.PrivateKey
+}
+
+type configLoad interface {
+	db() *gorm.DB
+	privateKeyRSA() *rsa.PrivateKey
+	super() *super
+	jwt() *jwtConfig
+	domain() string
+}
+
+type appRouter struct {
+	publicKey  *rsa.PublicKey
+	controller controller
+}
+
+type appController struct {
+	service servicer
+}
+
+type appService struct {
+	configLoad
+}
+
+func New(config configLoad) (*appRouter, error) {
+	if err := migrate(config); err != nil {
+		return nil, err
+	}
+
+	if config.super() != nil {
 		if err := saveUserAdmin(config); err != nil {
-			return nil, fmt.Errorf("err on save admin: %v", err.Error())
+			return nil, err
 		}
 	}
 	if err := savePermissions(config); err != nil {
-		return nil, fmt.Errorf("err on save permissions: %v", err.Error())
+		return nil, err
 	}
-	router := &Router{
-		AppConfig: config,
-		Controller: Controller{
-			AppConfig: config,
-			Service:   Service{config},
-		},
+
+	service := appService{config}
+
+	controller := appController{
+		service: &service,
 	}
-	for _, r := range ready {
-		if err := r(config); err != nil {
-			return nil, fmt.Errorf("err on ready: %v", err.Error())
-		}
+
+	router := appRouter{
+		publicKey:  &config.privateKeyRSA().PublicKey,
+		controller: &controller,
 	}
-	return router, nil
+
+	return &router, nil
 }

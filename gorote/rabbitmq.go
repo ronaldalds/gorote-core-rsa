@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 	"sync"
@@ -18,12 +19,22 @@ type InitRabbitMQ struct {
 	Port     int
 }
 
+func (q *InitRabbitMQ) ConnString() string {
+	user := url.QueryEscape(q.User)
+	pass := url.QueryEscape(q.Password)
+	dsn := fmt.Sprintf("amqp://%s:%s@%s:%d", user, pass, q.Host, q.Port)
+	return dsn
+}
+
 type ConnRabbitMQ struct {
-	*amqp.Connection
 	*amqp.Channel
 }
 
 type HandlesRabbitMQ func(context.Context, amqp.Delivery) error
+
+type queueWithString interface {
+	ConnString() string
+}
 
 func Redelivery(b amqp.Delivery) int {
 	count, ok := b.Headers["x-delivery-count"]
@@ -37,13 +48,9 @@ func Redelivery(b amqp.Delivery) int {
 	return reenvio
 }
 
-func (r *InitRabbitMQ) Connect(vhost string) (*ConnRabbitMQ, error) {
-	user := url.QueryEscape(r.User)
-	pass := url.QueryEscape(r.Password)
+func Connect(ctx context.Context, dsn queueWithString, vhost string) (*ConnRabbitMQ, error) {
 	vhost = url.PathEscape(vhost)
-	uri := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", user, pass, r.Host, r.Port, vhost)
-
-	conn, err := amqp.Dial(uri)
+	conn, err := amqp.Dial(fmt.Sprintf("%s/%s", dsn.ConnString(), vhost))
 	if err != nil {
 		return nil, fmt.Errorf("falha ao conectar ao RabbitMQ: %w", err)
 	}
@@ -54,10 +61,17 @@ func (r *InitRabbitMQ) Connect(vhost string) (*ConnRabbitMQ, error) {
 		return nil, fmt.Errorf("falha ao abrir canal: %w", err)
 	}
 
-	return &ConnRabbitMQ{Connection: conn, Channel: ch}, nil
+	go func() {
+		<-ctx.Done()
+		ch.Close()
+		conn.Close()
+		log.Println("queue RabbitMQ shutdown")
+	}()
+
+	return &ConnRabbitMQ{ch}, nil
 }
 
-func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, nameConsumer string, handler HandlesRabbitMQ) error {
+func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, nameConsumer string, handler HandlesRabbitMQ, errHandlers ...HandlesRabbitMQ) error {
 	if err := r.Channel.Qos(worker, 0, false); err != nil {
 		return fmt.Errorf("falha ao configurar QoS: %w", err)
 	}
@@ -88,6 +102,11 @@ func (r *ConnRabbitMQ) ConsumerMessages(ctx context.Context, worker int, queue, 
 				}()
 				if err := handler(ctx, msg); err != nil {
 					d.Nack(false, true)
+					for _, errHandler := range errHandlers {
+						if err := errHandler(ctx, msg); err != nil {
+							return
+						}
+					}
 					return
 				} else {
 					d.Ack(false)

@@ -1,73 +1,69 @@
 package core
 
-type HealthHandler struct {
-	Sql map[string]string `json:"sql"`
-}
-
-type Paginate struct {
-	Page  uint `query:"page" validate:"required,min=1"`
-	Limit uint `query:"limit" validate:"required"`
-}
-
-type Login struct {
-	Username string `json:"username" validate:"required"`
+type login struct {
+	Email    string `json:"email" validate:"required"`
 	Password string `json:"password" validate:"required"`
 }
 
-type RefrashToken struct {
+type refrashToken struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-type Token struct {
+type token struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-type CreateRole struct {
-	Name        string `json:"name" validate:"required,min=3,max=100"`
-	Description string `json:"description"`
-	Permissions []uint `json:"permissions"`
+type createRole struct {
+	Name        string   `json:"name" validate:"required,min=3,max=100"`
+	Description string   `json:"description"`
+	Permissions []string `json:"permissions"`
 }
 
-type CreateUser struct {
-	UserSchema
+type createUser struct {
+	schemaUser
+	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=6"`
 }
 
-type UserParam struct {
-	ID uint `param:"id"`
+type recieveUser struct {
+	ID string `param:"id" validate:"required"`
 }
 
-type UserSchema struct {
-	ID          uint   `json:"id"`
-	FirstName   string `json:"firstName" validate:"required,min=1,max=50"`
-	LastName    string `json:"lastName" validate:"omitempty,max=50"`
-	Email       string `json:"email" validate:"required,email"`
-	Active      bool   `json:"active"`
-	IsSuperUser bool   `json:"isSuperUser"`
-	Roles       []uint `json:"roles"`
-	Tenants     []uint `json:"tenants"`
-	Phone1      string `json:"phone1" validate:"required,e164"`
-	Phone2      string `json:"phone2" validate:"omitempty,e164"`
+type schemaUser struct {
+	ID          string   `param:"id"`
+	FirstName   string   `json:"first_name" validate:"omitempty,min=1,max=50"`
+	LastName    string   `json:"last_name" validate:"omitempty,max=50"`
+	Active      bool     `json:"active" validate:"omitempty"`
+	IsSuperUser bool     `json:"is_super_user" validate:"omitempty"`
+	Roles       []string `json:"roles" validate:"omitempty"`
+	Tenants     []string `json:"tenants" validate:"omitempty"`
+	Phone1      string   `json:"phone1" validate:"omitempty,e164"`
+	Phone2      string   `json:"phone2" validate:"omitempty,e164"`
 }
 
-type ListUser struct {
-	Page  uint   `json:"page" validate:"required,min=1"`
-	Limit uint   `json:"limit" validate:"required"`
-	Data  []User `json:"data"`
-	Total uint   `json:"total" validate:"required"`
+type paginateReq struct {
+	Page  uint `query:"page" validate:"required,min=1"`
+	Limit uint `query:"limit" validate:"required"`
 }
 
-type ListRole struct {
-	Page  uint   `json:"page"`
-	Limit uint   `json:"limit"`
-	Data  []Role `json:"data"`
-	Total uint   `json:"total"`
+type paginateRes struct {
+	Page  uint `json:"page" validate:"required,min=1"`
+	Limit uint `json:"limit" validate:"required"`
+	Total uint `json:"total" validate:"required"`
 }
 
-type ListPermission struct {
-	Page  uint         `json:"page" validate:"required,min=1"`
-	Limit uint         `json:"limit" validate:"required"`
-	Data  []Permission `json:"data"`
-	Total uint         `json:"total" validate:"required"`
+type listUser struct {
+	paginateRes
+	Data []User `json:"data"`
+}
+
+type listRole struct {
+	paginateRes
+	Data []Role `json:"data"`
+}
+
+type listPermission struct {
+	paginateRes
+	Data []Permission `json:"data"`
 }
