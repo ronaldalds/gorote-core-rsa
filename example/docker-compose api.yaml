@@ -72,6 +72,15 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: ${NOSQL_PASSWORD:-example}
       ME_CONFIG_MONGODB_SERVER: mongo
 
+  otel-collector:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "3000:3000"   # Grafana UI
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+
 volumes:
   psql_v:
   pgadmin_v:
