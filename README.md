@@ -19,8 +19,7 @@ Uma biblioteca completa para autenticação e autorização usando JWT com cript
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/ronaldalds/gorote-core-rsa.git
-cd gorote-core-rsa
+go get github.com/ronaldalds/gorote-core-rsa@latest
 ```
 
 ### 2. Configurar ambiente
