@@ -19,8 +19,7 @@ Uma biblioteca completa para autenticação e autorização usando JWT com cript
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/ronaldalds/gorote-core-rsa.git
-cd gorote-core-rsa
+go get github.com/ronaldalds/gorote-core-rsa@latest
 ```
 
 ### 2. Configurar ambiente
@@ -40,6 +39,7 @@ openssl rsa -pubout -in private_key.pem -out public_key.pem
 ### 2. Configurar banco de dados
 
 Crie dois bancos de dados no PostgreSQL:
+
 Configuração necessária caso não existam os database.
 
 ```sql
@@ -310,9 +310,9 @@ func main() {
 ### Autenticação
 | Método | Endpoint             | Descrição                     | Body Request Example             |
 |--------|----------------------|-------------------------------|----------------------------------|
-| `GET`  |`health`      | Faz um health check           |                                  |
-| `POST` |`auth/login`  | Login de usuário              |```{"email":"admin@admin.com", "password":"admin"}``` |
-| `POST` |`refresh`     | Renova o token de acesso      |```{"refresh_token": "token"}``` |
+| `GET`  |`/api/v1/health`      | Faz um health check           |                                  |
+| `POST` |`/api/v1/auth/login`  | Login de usuário              |```{"email":"admin@admin.com", "password":"admin"}``` |
+| `POST` |`/api/v1/refresh`     | Renova o token de acesso      |```{"refresh_token": "token"}``` |
 
 ### Microserviço
 | Método | Endpoint             | Descrição                     | Body Request Example             |
@@ -322,7 +322,7 @@ func main() {
 
 ## 🛡️ Como a autenticação funciona
 - **Login:**
-  - Usuário envia credenciais para `/auth/login`
+  - Usuário envia credenciais para `/api/v1/auth/login`
   - Serviço valida e retorna:
     - `access_token` (validade curta)
     - `refresh_token` (validade longa)
@@ -332,7 +332,7 @@ func main() {
   - Microserviço valida assinatura com chave pública
 
 - **Token expirado:**
-  - Client usa `/auth/refresh` com `refresh_token`
+  - Client usa `/api/v1/refresh` com `refresh_token`
   - Recebe novo `access_token`
 
 ## 📦 Estrutura do Token JWT
