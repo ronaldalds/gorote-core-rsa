@@ -40,6 +40,7 @@ openssl rsa -pubout -in private_key.pem -out public_key.pem
 ### 2. Configurar banco de dados
 
 Crie dois bancos de dados no PostgreSQL:
+Configuração necessária caso não existam os database.
 
 ```sql
 -- Banco para o serviço de autenticação
