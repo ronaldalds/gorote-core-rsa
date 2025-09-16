@@ -137,6 +137,7 @@ func (c *appController) listUsersHandler(ctx *fiber.Ctx) error {
 
 func (c *appController) createUserHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*createUser)
+	claims := ctx.Locals("claimsData").(*JwtClaims)
 	if err := gorote.ValidatePassword(req.Password); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -145,7 +146,7 @@ func (c *appController) createUserHandler(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("crypting password failed: %s", err.Error()))
 	}
 	req.Password = hashedPassword
-	_, err = c.service.createUser(req)
+	_, err = c.service.createUser(req, claims.IsSuperUser)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}

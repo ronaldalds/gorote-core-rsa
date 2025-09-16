@@ -20,7 +20,7 @@ type servicer interface {
 	roles(...string) ([]Role, error)
 	permissions(...string) ([]Permission, error)
 	createRole(*createRole) (*Role, error)
-	createUser(*createUser) (*User, error)
+	createUser(*createUser, bool) (*User, error)
 	updateUser(*schemaUser, bool, bool) (*User, error)
 	claims(jwt.Claims, string) error
 }
@@ -217,28 +217,53 @@ func (s *appService) createRole(req *createRole) (*Role, error) {
 	return &role, nil
 }
 
-func (s *appService) createUser(req *createUser) (*User, error) {
-	roles, err := s.roles(req.Roles...)
-	if err != nil {
-		return nil, fmt.Errorf("group with ids does not exist")
-	}
+func (s *appService) createUser(req *createUser, editorSuper bool) (*User, error) {
+	var user User
+	if err := s.db().Transaction(func(tx *gorm.DB) error {
+		roles, err := s.roles(req.Roles...)
+		if err != nil {
+			return fmt.Errorf("group with ids does not exist")
+		}
 
-	user := User{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-		Password:  req.Password,
-		Active:    req.Active,
-		Phone1:    &req.Phone1,
-		Phone2:    &req.Phone2,
-	}
+		user.FirstName = req.FirstName
+		user.LastName = req.LastName
+		user.Active = req.Active
+		if editorSuper {
+			user.IsSuperUser = req.IsSuperUser
+		}
+		user.Phone1 = &req.Phone1
+		user.Phone2 = &req.Phone2
 
-	if err := s.db().Create(&user).Error; err != nil {
-		return nil, fmt.Errorf("failed to create user")
-	}
+		if len(req.Roles) > 0 {
+			roles, err := s.roles(req.Roles...)
+			if err != nil {
+				return err
+			}
+			user.Roles = roles
+		}
+		if len(req.Tenants) > 0 {
+			tenants, err := s.tenants(req.Tenants...)
+			if err != nil {
+				return err
+			}
+			user.Tenants = tenants
+		}
 
-	if err := s.db().Model(&user).Association("Roles").Replace(roles); err != nil {
-		return nil, fmt.Errorf("failed to set roles for user")
+		if err := s.db().Create(&user).Error; err != nil {
+			return fmt.Errorf("failed to create user")
+		}
+
+		if err := s.db().Model(&user).Association("Roles").Replace(roles); err != nil {
+			return fmt.Errorf("failed to set roles for user")
+		}
+
+		if err := tx.Model(&user).Association("Tenants").Replace(user.Tenants); err != nil {
+			return fmt.Errorf("failed to set tenants for user: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return &user, nil
@@ -247,7 +272,7 @@ func (s *appService) createUser(req *createUser) (*User, error) {
 func (s *appService) updateUser(req *schemaUser, editorSuper, editorPermission bool) (*User, error) {
 	var user User
 
-	err := s.db().Transaction(func(tx *gorm.DB) error {
+	if err := s.db().Transaction(func(tx *gorm.DB) error {
 		users, err := s.users(req.ID)
 		if err != nil {
 			return err
@@ -267,16 +292,20 @@ func (s *appService) updateUser(req *schemaUser, editorSuper, editorPermission b
 		user.Phone2 = &req.Phone2
 
 		if editorPermission || editorSuper {
-			roles, err := s.roles(req.Roles...)
-			if err != nil {
-				return err
+			if len(req.Roles) > 0 {
+				roles, err := s.roles(req.Roles...)
+				if err != nil {
+					return err
+				}
+				user.Roles = roles
 			}
-			tenants, err := s.tenants(req.Tenants...)
-			if err != nil {
-				return err
+			if len(req.Tenants) > 0 {
+				tenants, err := s.tenants(req.Tenants...)
+				if err != nil {
+					return err
+				}
+				user.Tenants = tenants
 			}
-			user.Roles = roles
-			user.Tenants = tenants
 		}
 
 		if err := tx.Model(&user).Updates(user).Error; err != nil {
@@ -293,9 +322,7 @@ func (s *appService) updateUser(req *schemaUser, editorSuper, editorPermission b
 		}
 
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
