@@ -65,7 +65,7 @@ func TestAuthintegration(t *testing.T) {
 		}
 	})
 
-	t.Run("recieve user", func(t *testing.T) {
+	t.Run("receive user", func(t *testing.T) {
 		tk, _, err := jwt.NewParser().ParseUnverified(Token.AccessToken, &JwtClaims{})
 		if err != nil {
 			t.Error("err on validate token")
