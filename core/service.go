@@ -90,7 +90,6 @@ func (s *appService) generateJwt(user *User, typeToken string) (string, error) {
 		Type:        typeToken,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        user.ID.String(),
-			Subject:   user.Email,
 			Issuer:    s.name(),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expire)),
