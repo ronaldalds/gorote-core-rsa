@@ -9,17 +9,18 @@ Uma biblioteca completa para autenticação e autorização usando JWT com cript
 
 ## 📋 Pré-requisitos
 
-- Go 1.20 ou superior
+- Go 1.24 ou superior
 - PostgreSQL (13 ou superior)
 - OpenSSL (para geração de chaves)
 - Git
 
 ## 🚀 Começando
 
-### 1. Instalação da biblioteca
+### 1. Clonar o repositório
 
 ```bash
-go get github.com/ronaldalds/gorote-core-rsa@latest
+git clone https://github.com/ronaldalds/gorote-core-rsa.git
+cd gorote-core-rsa
 ```
 
 ### 2. Configurar ambiente
@@ -55,11 +56,13 @@ Para uma melhor organização utilize o template [Projeto Gorote](https://github
 /gorote
 ├── /api             	# Início do projeto instancia do fiber e configurações
 ├── /app             	# Pasta onde fica as aplicações do projeto
+├── /env             	# Pasta onde env do projeto
 ├── .env.example     	# Exemplo de .env
 ├── .gitignore        	# Git ignore para go
 ├── docker-compose.yaml	# docker compose com todos os serviços para subir aplicação em modo dev
 ├── Dockerfile       	# Dockerfile para iniciar o container da API
 ├── go.mod           	# Dependências do Go
+├── go.sum           	# Dependências do Go
 ├── private_key.pem  	# Chave privada (não versionar!) ***Necessário criar***
 └── public_key.pem   	# Chave pública			 ***Necessário criar***
 ```
@@ -80,68 +83,118 @@ Crie um arquivo `main.go`:
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/ronaldalds/gorote-core-rsa/core"
 	"github.com/gofiber/fiber/v2"
+	"github.com/ronaldalds/gorote-core-rsa/core"
+	"github.com/ronaldalds/gorote-core-rsa/gorote"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	"gorm.io/driver/postgres"
 )
 
 func main() {
-	app := fiber.New(fiber.Config{
-		AppName: "Gorote Auth Service",
-	})
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// 1. Carregar chave privada
-	privateKey, err := core.ReadRSAPrivateKeyFromFile("private_key.pem")
-	if err != nil {
-		log.Fatal("Falha ao ler chave privada:", err)
-	}
+	// 1. Configurar variáveis da aplicação
+	appName := "core"
+	appVersion := "v0.1.0"
+	appTimezone := "America/Fortaleza"
+	appPort := 3000
+	domain := "localhost"
 
 	// 2. Configuração do banco de dados
 	// recomendado usar variáveis de ambiente para maior segurança
-	dbConfig := &core.InitGorm{
-		Host:     "localhost",			
+	dbConfig := &gorote.InitPostgres{
+		Host:     "localhost",
 		User:     "seu_usuario",
 		Password: "sua_senha",
 		Database: "gorote",
 		Port:     5432,
 		Schema:   "public",
-		TimeZone: "America/Sao_Paulo",
+		TimeZone: appTimezone,
+	}
+	// iniciar GORM
+	sql, err := gorote.NewGorm(postgres.Open(dbConfig.DSN()))
+	if err != nil {
+		log.Fatal("err on sql")
 	}
 
 	// 3. Configuração JWT
-	jwtConfig := &core.AppJwt{
-		JwtExpireAccess:  5 * time.Minute,   // Token de acesso
-		JwtExpireRefresh: 24 * time.Hour,    // Token de refresh
-	}
+	jwtExpireAccess := 5 * time.Minute // Token de acesso
+	jwtExpireRefresh := 24 * time.Hour // Token de refresh
 
 	// 4. Super usuário (criado na primeira execução)
-	superUser := &core.AppSuper{
-		SuperName:  "Admin",
-		SuperUser:  "admin",
-		SuperPass:  "senha_segura",
-		SuperEmail: "admin@empresa.com",
-		SuperPhone: "+5511999999999",
+	superEmail := "admin@admin.com"
+	superPass := "admin"
+
+	// 5. Carregar chave privada
+	privateKey := gorote.MustReadPrivateKeyFromFile("private_key.pem")
+
+	// 6. Iniciar fiber server
+	app := fiber.New(fiber.Config{
+		AppName: appName,
+	})
+
+	// 7. Configuração da url do colletor para uso do opentelemetry
+	// caso nao use telemetria não será necessario
+	collectorOpentelemetry := "localhost:4317"
+	// configurar resource
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(appName),
+			semconv.ServiceVersionKey.String(appVersion),
+		),
+	)
+	if err != nil {
+		log.Fatal("error on resource")
+	}
+	// iniciar provider
+	if err := gorote.TelemetryFiber(ctx, app, res, collectorOpentelemetry); err != nil {
+		log.Fatal("error on telemetry")
 	}
 
-	// 5. Configuração completa do app
-	appConfig := &core.AppConfig{
-		App:         app,
-		GormStore:    core.NewGormStore(dbConfig),
-		AppName:     "Gorote Auth",
-		AppTimeZone: "America/Sao_Paulo",
-		PrivateKey:  privateKey,
-		Jwt:         jwtConfig,
-		Super:       superUser,
+	// 8. Configuração completa do app
+	coreRouter, err := core.New(&core.Config{
+		DB:               sql,
+		AppName:          appName,
+		PrivateKey:       privateKey,
+		JwtExpireAccess:  jwtExpireAccess,
+		JwtExpireRefresh: jwtExpireRefresh,
+		SuperEmail:       superEmail,
+		SuperPass:        superPass,
+		Domain:           domain,
+	})
+	if err != nil {
+		log.Fatal("err on config core")
 	}
 
-	// 6. Inicializar rotas
-	router := core.New(appConfig)
-	router.RegisterRouter(app.Group("/api/v1"))
+	// 9. Inicializar rotas
+	coreRouter.RegisterRouter(app.Group("/api/v1"))
 
-	// 7. Iniciar servidor
-	log.Fatal(app.Listen(":3000"))
+	// 10. Iniciar servidor
+	go func() {
+		err := app.Listen(fmt.Sprintf(":%d", appPort))
+		if err != nil {
+			panic(fmt.Sprintf("http server error: %s", err))
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("shutting down gracefully, press Ctrl+C again to force")
+
+	contx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := app.ShutdownWithContext(contx); err != nil {
+		log.Fatal("server forced to shutdown with error")
+	}
 }
 ```
 
@@ -149,48 +202,106 @@ func main() {
 
 Como consumir a autenticação em outros serviços:
 ```go
-
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/ronaldalds/gorote-core-rsa/core"
 	"github.com/ronaldalds/gorote-core-rsa/example"
+	"github.com/ronaldalds/gorote-core-rsa/gorote"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	"gorm.io/driver/postgres"
 )
 
 func main() {
-	app := fiber.New()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// 1. Carregar chave pública
-	publicKey, err := core.ReadRSAPublicKeyFromFile("public_key.pem")
-	if err != nil {
-		log.Fatal("Falha ao ler chave pública:", err)
-	}
+	// 1. Configurar variáveis da aplicação
+	appName := "example"
+	appVersion := "v0.1.0"
+	appTimezone := "America/Fortaleza"
+	appPort := 3000
 
-	// 2. Configuração do banco do microserviço
-	serviceDB := &core.InitGorm{
+	// 2. Configuração do banco de dados
+	// recomendado usar variáveis de ambiente para maior segurança
+	dbConfig := &gorote.InitPostgres{
 		Host:     "localhost",
 		User:     "seu_usuario",
 		Password: "sua_senha",
-		Database: "service",
+		Database: "gorote",
 		Port:     5432,
+		Schema:   "public",
+		TimeZone: appTimezone,
+	}
+	// iniciar GORM
+	sql, err := gorote.NewGorm(postgres.Open(dbConfig.DSN()))
+	if err != nil {
+		log.Fatal("err on sql")
 	}
 
-	// 3. Configuração do microserviço
-	serviceConfig := &example.AppConfig{
-		App:         app,
-		GormStore:   core.NewGormStore(serviceDB),
-		AppName:     "Meu Microserviço",
-		PublicKey:   publicKey,
+	// 3. Carregar chave privada
+	publicKey := gorote.MustReadPublicKeyFromFile("public_key.pem")
+
+	// 4. Iniciar fiber server
+	app := fiber.New(fiber.Config{
+		AppName: appName,
+	})
+
+	// 5. Configuração da url do colletor para uso do opentelemetry
+	// caso nao use telemetria não será necessario
+	collectorOpentelemetry := "localhost:4317"
+	// configurar resource
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(appName),
+			semconv.ServiceVersionKey.String(appVersion),
+		),
+	)
+	if err != nil {
+		log.Fatal("error on resource")
+	}
+	// iniciar provider
+	if err := gorote.TelemetryFiber(ctx, app, res, collectorOpentelemetry); err != nil {
+		log.Fatal("error on telemetry")
 	}
 
-	// 4. Registrar rotas
-	service := example.New(serviceConfig)
-	service.RegisterRouter(app.Group("/api/v1"))
+	// 6. Configuração completa do app
+	microRouter, err := example.New(&example.Config{
+		DB:        sql,
+		PublicKey: publicKey,
+	})
+	if err != nil {
+		log.Fatal("err on config micro")
+	}
 
-	log.Fatal(app.Listen(":3001"))
+	// 7. Inicializar rotas
+	microRouter.RegisterRouter(app.Group("/api/v1"))
+
+	// 8. Iniciar servidor
+	go func() {
+		err := app.Listen(fmt.Sprintf(":%d", appPort))
+		if err != nil {
+			panic(fmt.Sprintf("http server error: %s", err))
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("shutting down gracefully, press Ctrl+C again to force")
+
+	contx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := app.ShutdownWithContext(contx); err != nil {
+		log.Printf("server forced to shutdown with error")
+	}
 }
 ```
 
@@ -198,9 +309,9 @@ func main() {
 ### Autenticação
 | Método | Endpoint             | Descrição                     | Body Request Example             |
 |--------|----------------------|-------------------------------|----------------------------------|
-| `GET`  |`/api/v1/health`      | Faz um health check           |                                  |
-| `POST` |`/api/v1/auth/login`  | Login de usuário              |```{"username":"admin", "password":"senha123"}``` |
-| `POST` |`/api/v1/refresh`     | Renova o token de acesso      |```{"refresh_token": "token"}``` |
+| `GET`  |`health`      | Faz um health check           |                                  |
+| `POST` |`auth/login`  | Login de usuário              |```{"email":"admin@admin.com", "password":"admin"}``` |
+| `POST` |`refresh`     | Renova o token de acesso      |```{"refresh_token": "token"}``` |
 
 ### Microserviço
 | Método | Endpoint             | Descrição                     | Body Request Example             |
@@ -226,12 +337,15 @@ func main() {
 ## 📦 Estrutura do Token JWT
 ```json
 {
-  "sub": "123",				// ID do usuário
-  "iss": "Gorote",			// Nome App
-  "permissions": ["view", "create"],	// Permissões do usuário
-  "isSuperUser": false,			// Se é super usuário
-  "iat": 1516239022,			// Emitido em
-  "exp": 1516242622			// Expira em
+  "isSuperUser": true,
+  "permissions": ["string_permission","string_permission"],
+  "tenants": ["uuid","uuid"],
+  "type": "access_token",
+  "iss": "app_name",
+  "sub": "admin@admin.com",
+  "exp": 1757970475,
+  "iat": 1757970175,
+  "jti": "d92c1253-af18-4d9a-7164-f8d488671779"
 }
 ```
 
@@ -240,7 +354,7 @@ func main() {
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"senha_segura"}'
+  -d '{"email":"admin@admin.com","password":"admin"}'
 ```
 
 ### 2. Acessar microserviço
@@ -258,8 +372,8 @@ curl http://localhost:3001/api/v1/ \
   Sempre habilite SSL/TLS para todas as comunicações
 
 - **Configure tempos de expiração adequados**  
-  - Access tokens: 5-15 minutos (ex: `5` em minutos)
-  - Refresh tokens: 7-30 dias (ex: `168` em minutos) 
+  - Access tokens: 5-15 minutos (ex: `300` em segundos)
+  - Refresh tokens: 7-30 dias (ex: `604800` em segundos) 
 
 - **Revise permissões do banco de dados**  
   Aplique o princípio do menor privilégio para usuários do DB
