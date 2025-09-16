@@ -19,12 +19,17 @@ type super struct {
 
 type Config struct {
 	*gorm.DB
+	AppName          string
 	PrivateKey       *rsa.PrivateKey
 	JwtExpireAccess  time.Duration
 	JwtExpireRefresh time.Duration
 	SuperEmail       string
 	SuperPass        string
 	Domain           string
+}
+
+func (c *Config) name() string {
+	return c.AppName
 }
 
 func (c *Config) db() *gorm.DB {
@@ -58,6 +63,7 @@ func (c *Config) privateKeyRSA() *rsa.PrivateKey {
 
 type configLoad interface {
 	db() *gorm.DB
+	name() string
 	privateKeyRSA() *rsa.PrivateKey
 	super() *super
 	jwt() *jwtConfig
