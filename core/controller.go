@@ -75,6 +75,10 @@ func (c *appController) refrashTokenHandler(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "failed to refrash token: user is inactive")
 	}
 
+	if user.UpdatedAt.Unix() > claims.IssuedAt.Unix() {
+		return fiber.NewError(fiber.StatusBadRequest, "failed to refrash token: user is inactive")
+	}
+
 	accessToken, err := c.service.generateJwt(&user, "access_token")
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
