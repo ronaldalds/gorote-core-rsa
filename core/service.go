@@ -70,7 +70,7 @@ func (s *appService) generateJwt(user *User, typeToken string) (string, error) {
 	}
 	var tenants []string
 	for _, tenant := range user.Tenants {
-		tenants = append(tenants, tenant.ID.String())
+		tenants = append(tenants, tenant.Name)
 	}
 
 	var expire time.Duration
@@ -142,9 +142,9 @@ func (s *appService) users(ids ...string) ([]User, error) {
 	return data, nil
 }
 
-func (s *appService) tenants(ids ...string) ([]Tenant, error) {
+func (s *appService) tenants(names ...string) ([]Tenant, error) {
 	var data []Tenant
-	if len(ids) == 0 {
+	if len(names) == 0 {
 		if err := s.db().
 			Find(&data).Error; err != nil {
 			return nil, fmt.Errorf("failed to query database")
@@ -152,7 +152,7 @@ func (s *appService) tenants(ids ...string) ([]Tenant, error) {
 		return data, nil
 	}
 	if err := s.db().
-		Where("id IN ?", ids).
+		Where("name IN ?", names).
 		Find(&data).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch tenants")
 	}
