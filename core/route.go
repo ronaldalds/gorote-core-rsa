@@ -9,7 +9,6 @@ func (r *appRouter) RegisterRouter(router fiber.Router) {
 	r.Check(router.Group("/check"))
 	r.Health(router.Group("/health"))
 	r.Auth(router.Group("/auth", gorote.Limited(60)))
-	r.RefrashToken(router.Group("/refrash"))
 	r.User(router.Group("/users"))
 	r.Role(router.Group("/roles"))
 	r.Permission(router.Group("/permissions"))
@@ -27,13 +26,6 @@ func (r *appRouter) Auth(router fiber.Router) {
 	router.Post("/login",
 		gorote.ValidationMiddleware(&login{}),
 		r.controller.loginHandler,
-	)
-}
-
-func (r *appRouter) RefrashToken(router fiber.Router) {
-	router.Post("/",
-		gorote.ValidationMiddleware(&refrashToken{}),
-		r.controller.refrashTokenHandler,
 	)
 }
 
@@ -57,6 +49,10 @@ func (r *appRouter) User(router fiber.Router) {
 		gorote.ValidationMiddleware(&schemaUser{}),
 		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute()),
 		r.controller.updateUserHandler,
+	)
+	router.Post("/refrash",
+		gorote.ValidationMiddleware(&refrashToken{}),
+		r.controller.refrashTokenHandler,
 	)
 }
 
