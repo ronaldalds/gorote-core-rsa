@@ -11,7 +11,7 @@ import (
 type controller interface {
 	healthHandler(*fiber.Ctx) error
 	loginHandler(*fiber.Ctx) error
-	refrashTokenHandler(*fiber.Ctx) error
+	refreshTokenHandler(*fiber.Ctx) error
 	listUsersHandler(*fiber.Ctx) error
 	listPermissiontHandler(*fiber.Ctx) error
 	listRolesHandler(*fiber.Ctx) error
