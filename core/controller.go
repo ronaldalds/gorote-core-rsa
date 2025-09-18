@@ -52,7 +52,7 @@ func (c *appController) loginHandler(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *appController) refrashTokenHandler(ctx *fiber.Ctx) error {
+func (c *appController) refreshTokenHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*refrashToken)
 	refreshToken := req.RefreshToken
 	if refreshToken == "" {
