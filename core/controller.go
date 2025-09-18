@@ -63,7 +63,7 @@ func (c *appController) refrashTokenHandler(ctx *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized, err.Error())
 	}
 
-	users, err := c.service.users(claims.Subject)
+	users, err := c.service.users(claims.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
