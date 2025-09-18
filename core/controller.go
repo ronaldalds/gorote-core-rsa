@@ -53,7 +53,7 @@ func (c *appController) loginHandler(ctx *fiber.Ctx) error {
 }
 
 func (c *appController) refreshTokenHandler(ctx *fiber.Ctx) error {
-	req := ctx.Locals("validatedData").(*refrashToken)
+	req := ctx.Locals("validatedData").(*refreshToken)
 	refreshToken := req.RefreshToken
 	if refreshToken == "" {
 		refreshToken = ctx.Cookies("refresh_token")
