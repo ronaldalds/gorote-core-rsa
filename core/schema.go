@@ -5,7 +5,7 @@ type login struct {
 	Password string `json:"password" validate:"required"`
 }
 
-type refrashToken struct {
+type refreshToken struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
