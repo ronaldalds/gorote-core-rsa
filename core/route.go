@@ -13,7 +13,6 @@ func (r *appRouter) RegisterRouter(router fiber.Router) {
 	r.User(router.Group("/users"))
 	r.Role(router.Group("/roles"))
 	r.Permission(router.Group("/permissions"))
-	r.Swagger(router.Group("/swagger"))
 }
 
 func (r *appRouter) Check(router fiber.Router) {
