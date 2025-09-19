@@ -21,6 +21,17 @@ type controller interface {
 	recieveUserHandler(*fiber.Ctx) error
 }
 
+// Login godoc
+// @Summary      User login
+// @Description  Authenticate user with email and password
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        credentials body login true "User login credentials (email and password required)"
+// @Success      200 {object} token "Login successful - returns access_token and refresh_token"
+// @Failure      400 {object} map[string]string "Bad request - validation error, invalid body, invalid credentials, or user inactive"
+// @Failure      429 {object} map[string]string "Too many requests - rate limit exceeded (60 requests per window)"
+// @Router       /auth/login [post]
 func (c *appController) loginHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*login)
 	user, err := c.service.login(req)
@@ -52,6 +63,18 @@ func (c *appController) loginHandler(ctx *fiber.Ctx) error {
 	})
 }
 
+// RefreshToken godoc
+// @Summary      Refresh access token
+// @Description  Generate new access token using refresh token (can be sent in body or cookie)
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        refresh_token body refreshToken true "Refresh token data (optional if sent as cookie)"
+// @Success      200 {object} token "Token refreshed successfully - returns new access_token and same refresh_token"
+// @Failure      400 {object} map[string]string "Bad request - validation error, invalid body, user not found, or user inactive"
+// @Failure      401 {object} map[string]string "Unauthorized - invalid or expired refresh token"
+// @Failure      429 {object} map[string]string "Too many requests - rate limit exceeded (60 requests per window)"
+// @Router       /auth/refresh [post]
 func (c *appController) refreshTokenHandler(ctx *fiber.Ctx) error {
 	req := ctx.Locals("validatedData").(*refreshToken)
 	refreshToken := req.RefreshToken
