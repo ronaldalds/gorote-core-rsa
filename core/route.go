@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 	"github.com/ronaldalds/gorote-core-rsa/gorote"
 )
 
@@ -12,6 +13,7 @@ func (r *appRouter) RegisterRouter(router fiber.Router) {
 	r.User(router.Group("/users"))
 	r.Role(router.Group("/roles"))
 	r.Permission(router.Group("/permissions"))
+	r.Swagger(router.Group("/swagger"))
 }
 
 func (r *appRouter) Check(router fiber.Router) {
@@ -75,4 +77,8 @@ func (r *appRouter) Permission(router fiber.Router) {
 		gorote.JWTProtectedRSA(&JwtClaims{}, r.publicKey, ProtectedRoute(PermissionViewPermission)),
 		r.controller.listPermissiontHandler,
 	)
+}
+
+func (r *appRouter) Swagger(router fiber.Router) {
+	router.Get("/*", swagger.HandlerDefault)
 }
